@@ -242,6 +242,13 @@ main { flex: 1; padding: 0 var(--space-5) var(--space-16); }
   color: var(--color-text-muted);
 }
 .chip:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-highlight); }
+
+.search-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-3);
+  line-height: 1.5;
+}
 .chip:active { transform: scale(0.96); }
 
 /* ===== Results ===== */
@@ -427,28 +434,76 @@ main { flex: 1; padding: 0 var(--space-5) var(--space-16); }
 .settings-card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: var(--space-4);
+  padding: 0;
   margin-bottom: var(--space-3);
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
+.settings-card.disabled { border-color: var(--color-divider); }
 .settings-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-2);
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-3) var(--space-4);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.settings-card-head .name { font-weight: 700; font-size: var(--text-sm); display: flex; align-items: center; gap: var(--space-2); }
-.settings-card-head .swatch-mini { width: 20px; height: 14px; border-radius: 3px; flex-shrink: 0; }
-.toggle-visibility {
-  width: 32px; height: 32px;
-  border-radius: var(--radius-full);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--color-text-muted);
+.settings-card-head:hover { background: var(--color-surface-offset); }
+.settings-card-head:active { background: var(--color-surface-offset); }
+.settings-card-head .name {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
-.toggle-visibility:hover { background: var(--color-surface-offset); }
-.toggle-visibility svg { width: 18px; height: 18px; }
-.settings-card.disabled { opacity: 0.45; }
+.settings-card.disabled .settings-card-head .name { color: var(--color-text-muted); opacity: 0.6; }
+.settings-card-head .swatch-mini { width: 22px; height: 16px; border-radius: 4px; flex-shrink: 0; transition: opacity 0.15s ease; }
+.settings-card.disabled .swatch-mini { opacity: 0.35; }
 
-.field-row { margin-top: var(--space-2); }
+/* iOS-style switch: large, unambiguous tap target */
+.toggle-visibility {
+  position: relative;
+  flex-shrink: 0;
+  width: 51px;
+  height: 31px;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s ease;
+  pointer-events: none; /* row click drives the toggle */
+}
+.toggle-visibility svg { display: none; }
+.toggle-visibility::after {
+  content: '';
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transform: translateX(0);
+  transition: transform 0.2s ease;
+}
+.settings-card:not(.disabled) .toggle-visibility {
+  background: var(--color-primary);
+}
+.settings-card:not(.disabled) .toggle-visibility::after {
+  transform: translateX(20px);
+}
+.settings-card.disabled { opacity: 1; }
+
+.field-row { padding: 0 var(--space-4) var(--space-4); }
 .field-row label {
   font-size: var(--text-xs);
   color: var(--color-text-muted);

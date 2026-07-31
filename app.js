@@ -203,22 +203,16 @@
 
       return `
         <div class="settings-card ${isOn ? '' : 'disabled'}" data-card-block="${card.id}">
-          <div class="settings-card-head">
+          <button type="button" class="settings-card-head" data-toggle="${card.id}" role="switch" aria-checked="${isOn}" aria-label="${escapeHtml(card.name)}, ${isOn ? 'included in results' : 'hidden from results'}">
             <div class="name"><span class="swatch-mini" style="background:${card.color}"></span>${escapeHtml(card.name)}</div>
-            <button class="toggle-visibility" data-toggle="${card.id}" aria-label="${isOn ? 'Disable' : 'Enable'} ${escapeHtml(card.name)}">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                ${isOn
-                  ? '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/>'
-                  : '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.6 21.6 0 0 1 5.06-6.06M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 8 11 8a21.4 21.4 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>'}
-              </svg>
-            </button>
-          </div>
+            <span class="toggle-visibility" aria-hidden="true"></span>
+          </button>
           ${choiceSelect}
           ${nfcuTierSelect}
         </div>`;
     }).join('');
 
-    // wire toggle buttons
+    // wire toggle rows (whole row is tappable, not just a small icon)
     $cardSettingsList.querySelectorAll('[data-toggle]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-toggle');

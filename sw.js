@@ -1,5 +1,5 @@
 // Minimal service worker — enables "installable" PWA criteria + basic offline shell caching.
-const CACHE = 'best-card-v1';
+const CACHE = 'swipe-logic-v2';
 const ASSETS = ['./', './index.html', './base.css', './style.css', './cards.js', './matcher.js', './app.js', './manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {

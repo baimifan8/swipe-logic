@@ -1,6 +1,6 @@
 {
-  "name": "Best Card — Cashback Picker",
-  "short_name": "Best Card",
+  "name": "Swipe Logic — Cashback Picker",
+  "short_name": "Swipe Logic",
   "description": "Type what you're buying and instantly see which credit card earns the most cash back or points.",
   "start_url": "./index.html",
   "scope": "./",

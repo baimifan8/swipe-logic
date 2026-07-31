@@ -2,9 +2,14 @@
   'use strict';
 
   // ---------- State ----------
-  // Persistence strategy: sandboxed previews block localStorage, so state lives
-  // in memory + is mirrored into the URL hash (base64 JSON). Once installed to
-  // homescreen / bookmarked, the hash round-trips and settings survive reloads.
+  // Persistence strategy: each device/browser keeps its own wallet.
+  //  1. A shared link with a URL hash (base64 JSON) always wins on first load —
+  //     this lets someone send a specific wallet snapshot to another device.
+  //  2. Otherwise, this browser's own localStorage is used, so reopening the
+  //     plain link later remembers this device's cards automatically.
+  //  3. If neither exists (first-ever visit, no shared link), the wallet starts
+  //     completely empty — nobody inherits anyone else's default cards.
+  const STORAGE_KEY = 'swipe-logic-wallet-v1';
   let cards = [];
   let enabled = {}; // id -> bool
   let $addCardSearch = null; // live reference to the add-card search input, re-queried each render
@@ -21,30 +26,56 @@
     }
   }
 
-  function saveStateToHash() {
+  function loadStateFromStorage() {
     try {
-      const payload = JSON.stringify({ cards, enabled });
-      const b64 = btoa(unescape(encodeURIComponent(payload)));
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveState() {
+    const payload = { cards, enabled };
+    try {
+      const json = JSON.stringify(payload);
+      const b64 = btoa(unescape(encodeURIComponent(json)));
       history.replaceState(null, '', '#' + b64);
     } catch (e) {
       /* ignore quota / encoding issues */
     }
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {
+      /* localStorage unavailable (private browsing, quota, etc.) — hash still works */
+    }
   }
 
   function init() {
-    const saved = loadStateFromHash();
-    if (saved && Array.isArray(saved.cards) && saved.cards.length) {
+    const fromHash = loadStateFromHash();
+    const fromStorage = loadStateFromStorage();
+    const saved = (fromHash && Array.isArray(fromHash.cards)) ? fromHash : fromStorage;
+    if (saved && Array.isArray(saved.cards)) {
       cards = saved.cards;
       enabled = saved.enabled || {};
     } else {
-      cards = cloneDefaults();
+      cards = [];
       enabled = {};
-      cards.forEach((c) => (enabled[c.id] = true));
     }
-    // ensure any newly-added default cards (future app updates) get an enabled flag
+    // ensure any pre-existing cards without an enabled flag default to visible
     cards.forEach((c) => {
       if (!(c.id in enabled)) enabled[c.id] = true;
     });
+    // if we loaded from a shared link's hash, mirror it into this device's
+    // own storage right away so a plain reload later keeps the same wallet
+    if (saved === fromHash && fromHash) {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ cards, enabled }));
+      } catch (e) {
+        /* ignore */
+      }
+    }
   }
 
   function activeCards() {
@@ -81,6 +112,7 @@
   }
 
   function renderEmpty() {
+    if (!cards.length) return renderNoCards();
     $resultsWrap.innerHTML = `
       <div class="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -91,9 +123,15 @@
   }
 
   function renderNoCards() {
+    const hasDisabledCards = cards.length > 0;
     $resultsWrap.innerHTML = `
       <div class="empty-state">
-        <p>No cards enabled. Tap the settings icon above to turn on at least one card.</p>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="6" width="20" height="14" rx="2.5"/><path d="M2 10h20"/>
+        </svg>
+        <p>${hasDisabledCards
+          ? 'No cards enabled. Tap the settings icon above to turn on at least one card.'
+          : 'Your wallet is empty on this device. Tap the settings icon above to add the cards you actually carry.'}</p>
       </div>`;
   }
 
@@ -176,7 +214,7 @@
     $sheetOverlay.classList.remove('open');
     $sheet.classList.remove('open');
     document.body.style.overflow = '';
-    saveStateToHash();
+    saveState();
     onQueryChange();
   }
 
@@ -254,6 +292,7 @@
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-toggle');
         enabled[id] = enabled[id] === false ? true : false;
+        saveState();
         renderCardSettings();
       });
     });
@@ -264,6 +303,7 @@
         const id = btn.getAttribute('data-remove');
         cards = cards.filter((c) => c.id !== id);
         delete enabled[id];
+        saveState();
         renderCardSettings();
       });
     });
@@ -275,6 +315,7 @@
         if (template && !cards.some((c) => c.id === id)) {
           cards.push(JSON.parse(JSON.stringify(template)));
           enabled[id] = true;
+          saveState();
           renderCardSettings();
         }
       });
@@ -295,7 +336,10 @@
       sel.addEventListener('change', () => {
         const id = sel.getAttribute('data-card');
         const card = cards.find((c) => c.id === id);
-        if (card) card.choiceCategory = sel.value;
+        if (card) {
+          card.choiceCategory = sel.value;
+          saveState();
+        }
       });
     });
     // wire NFCU tier select
@@ -306,6 +350,7 @@
         if (card) {
           const rate = parseFloat(sel.value);
           card.base.rate = rate;
+          saveState();
         }
       });
     });
@@ -327,9 +372,12 @@
   $doneSettings.addEventListener('click', closeSheet);
   $sheetOverlay.addEventListener('click', closeSheet);
   $resetDefaults.addEventListener('click', () => {
-    cards = cloneDefaults();
+    if (!cards.length) return;
+    const ok = window.confirm('Remove all cards from your wallet on this device?');
+    if (!ok) return;
+    cards = [];
     enabled = {};
-    cards.forEach((c) => (enabled[c.id] = true));
+    saveState();
     renderCardSettings();
   });
   $dismissInstallHint.addEventListener('click', () => {

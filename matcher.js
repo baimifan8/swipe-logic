@@ -54,16 +54,28 @@ function bestCategoryForCard(card, query) {
   let matches = [];
 
   if (card.editableChoiceCategory) {
-    // BofA-style: grocery is fixed, choice category is user-configurable
-    const groceryScore = keywordScore(query, card.grocery.keywords);
-    if (groceryScore > 0) {
-      matches.push({
-        score: groceryScore,
-        rate: card.grocery.rate,
-        label: card.grocery.label,
-        unit: card.unit,
-        cap: card.cap,
-      });
+    // BofA-style: an optional fixed "grocery" bonus, plus a user-configurable choice category.
+    if (card.grocery) {
+      const groceryScore = keywordScore(query, card.grocery.keywords);
+      if (groceryScore > 0) {
+        matches.push({
+          score: groceryScore,
+          rate: card.grocery.rate,
+          label: card.grocery.label,
+          unit: card.unit,
+          cap: card.cap,
+        });
+      }
+    }
+    // Optional always-on categories that apply regardless of the chosen rotating/choice category
+    // (e.g. Chase Freedom Flex's permanent 5% Chase Travel / 3% dining / 3% drugstore).
+    if (card.always && card.always.length) {
+      for (const cat of card.always) {
+        const s = keywordScore(query, cat.keywords);
+        if (s > 0) {
+          matches.push({ score: s, rate: cat.rate, label: cat.label, unit: card.unit, cap: cat.cap });
+        }
+      }
     }
     const chosenDef = card.categoryDefinitions[card.choiceCategory];
     if (chosenDef) {
@@ -72,7 +84,7 @@ function bestCategoryForCard(card, query) {
         matches.push({
           score: choiceScore,
           rate: card.choiceRate,
-          label: `${chosenDef.label} (your selected 3% category)`,
+          label: `${chosenDef.label} (your selected ${card.choiceRate}${card.unit} category)`,
           unit: card.unit,
           cap: card.cap,
         });
@@ -86,7 +98,7 @@ function bestCategoryForCard(card, query) {
         matches.push({
           score: s * 0.99, // slightly below an active match, still informative
           rate: card.choiceRate,
-          label: `${def.label} (switch your 3% choice category to unlock)`,
+          label: `${def.label} (switch your ${card.choiceRate}${card.unit} choice category to unlock)`,
           unit: card.unit,
           cap: card.cap,
           requiresSwitch: true,

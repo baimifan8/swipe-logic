@@ -7,6 +7,8 @@
   // homescreen / bookmarked, the hash round-trips and settings survive reloads.
   let cards = [];
   let enabled = {}; // id -> bool
+  let $addCardSearch = null; // live reference to the add-card search input, re-queried each render
+  let addCardSearchTerm = ''; // persisted across re-renders so typing survives DOM rebuilds
 
   function loadStateFromHash() {
     try {
@@ -115,7 +117,7 @@
         ? `<div class="result-fallback-tag">No specific category matched — showing base rate</div>`
         : '';
       const switchHint = match.switchSuggestion
-        ? `<div class="switch-hint">Switch your BofA choice category to <strong>${escapeHtml(match.switchSuggestion.switchTargetLabel)}</strong> to earn ${pct(match.switchSuggestion.rate)} here instead.</div>`
+        ? `<div class="switch-hint">Switch your ${escapeHtml(card.short || card.name)} choice category to <strong>${escapeHtml(match.switchSuggestion.switchTargetLabel)}</strong> to earn ${pct(match.switchSuggestion.rate)} here instead.</div>`
         : '';
       return `
         <article class="result-card ${isBest ? 'best' : ''}">
@@ -164,6 +166,7 @@
 
   // ---------- Settings sheet ----------
   function openSheet() {
+    addCardSearchTerm = '';
     renderCardSettings();
     $sheetOverlay.classList.add('open');
     $sheet.classList.add('open');
@@ -182,11 +185,16 @@
   }
 
   function renderCardSettings() {
-    $cardSettingsList.innerHTML = cards.map((card) => {
+    // Capture focus state of the add-card search input before we blow away the DOM.
+    const prevInput = document.getElementById('addCardSearch');
+    const wasSearchFocused = !!prevInput && document.activeElement === prevInput;
+    const caretPos = wasSearchFocused ? prevInput.selectionStart : 0;
+
+    const walletHtml = cards.map((card) => {
       const isOn = enabled[card.id] !== false;
       const choiceSelect = card.editableChoiceCategory ? `
         <div class="field-row">
-          <label for="choice-${card.id}">3% choice category (assumes it's set to match your purchase)</label>
+          <label for="choice-${card.id}">Bonus category (assumes it's set to match your purchase)</label>
           <select id="choice-${card.id}" data-card="${card.id}" class="choice-select">
             ${card.choiceCategoryOptions.map((k) => `<option value="${k}" ${card.choiceCategory === k ? 'selected' : ''}>${escapeHtml(choiceCategoryLabel(k, card.categoryDefinitions))}</option>`).join('')}
           </select>
@@ -209,8 +217,37 @@
           </button>
           ${choiceSelect}
           ${nfcuTierSelect}
+          <button type="button" class="remove-card-btn" data-remove="${card.id}" aria-label="Remove ${escapeHtml(card.name)} from your wallet">Remove card</button>
         </div>`;
     }).join('');
+
+    const walletIds = new Set(cards.map((c) => c.id));
+    const addableCatalog = CARD_CATALOG.filter((c) => !walletIds.has(c.id));
+    const query = normalizeAddSearch(addCardSearchTerm);
+    const filteredAddable = query
+      ? addableCatalog.filter((c) => c.name.toLowerCase().includes(query) || c.network.toLowerCase().includes(query))
+      : addableCatalog;
+
+    const addListHtml = filteredAddable.length
+      ? filteredAddable.map((card) => `
+          <button type="button" class="add-card-row" data-add="${card.id}">
+            <span class="name"><span class="swatch-mini" style="background:${card.color}"></span>${escapeHtml(card.name)}</span>
+            <span class="add-icon" aria-hidden="true">+</span>
+          </button>`).join('')
+      : `<p class="add-empty">${cards.length ? 'No matching cards — try a different search.' : 'No cards left to add.'}</p>`;
+
+    $cardSettingsList.innerHTML = `
+      <div class="wallet-section">
+        <h3 class="settings-subhead">In your wallet (${cards.length})</h3>
+        ${cards.length ? walletHtml : '<p class="add-empty">No cards yet — add one below.</p>'}
+      </div>
+      <div class="add-card-section">
+        <h3 class="settings-subhead">Add a card</h3>
+        <input type="text" id="addCardSearch" class="add-card-search" placeholder="Search by card name or network…" value="${escapeHtml(addCardSearchTerm)}" />
+        <div class="add-card-list">${addListHtml}</div>
+      </div>`;
+
+    $addCardSearch = document.getElementById('addCardSearch');
 
     // wire toggle rows (whole row is tappable, not just a small icon)
     $cardSettingsList.querySelectorAll('[data-toggle]').forEach((btn) => {
@@ -220,7 +257,40 @@
         renderCardSettings();
       });
     });
-    // wire BofA choice category selects
+    // wire remove buttons
+    $cardSettingsList.querySelectorAll('[data-remove]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-remove');
+        cards = cards.filter((c) => c.id !== id);
+        delete enabled[id];
+        renderCardSettings();
+      });
+    });
+    // wire add buttons
+    $cardSettingsList.querySelectorAll('[data-add]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-add');
+        const template = CARD_CATALOG.find((c) => c.id === id);
+        if (template && !cards.some((c) => c.id === id)) {
+          cards.push(JSON.parse(JSON.stringify(template)));
+          enabled[id] = true;
+          renderCardSettings();
+        }
+      });
+    });
+    // wire add-card search — preserve focus + cursor position across re-renders
+    if ($addCardSearch) {
+      if (wasSearchFocused) {
+        $addCardSearch.focus();
+        $addCardSearch.setSelectionRange(caretPos, caretPos);
+      }
+      $addCardSearch.addEventListener('input', (e) => {
+        addCardSearchTerm = e.target.value;
+        renderCardSettings();
+      });
+    }
+    // wire BofA/Discover/Flex/Cash+ choice category selects
     $cardSettingsList.querySelectorAll('.choice-select').forEach((sel) => {
       sel.addEventListener('change', () => {
         const id = sel.getAttribute('data-card');
@@ -239,6 +309,10 @@
         }
       });
     });
+  }
+
+  function normalizeAddSearch(v) {
+    return (v || '').toLowerCase().trim();
   }
 
   // ---------- Events ----------

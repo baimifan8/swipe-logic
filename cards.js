@@ -1,9 +1,13 @@
-// Default card lineup — Kevin's wallet, seeded from issuer public terms (checked July 31, 2026).
+// Card catalog — seeded from issuer public terms (checked July 31, 2026).
 // Each card has categories: array of {key, label, rate, unit: 'x'|'%', note?, cap?}
 // `keywords` are used for fuzzy matching against the free-text query.
 // `base` is the fallback/everything-else rate for that card.
+// STARTER_CARD_IDS: cards that populate a brand-new wallet by default.
+// Everything else in CARD_CATALOG is available to add via the settings sheet.
 
-const DEFAULT_CARDS = [
+const STARTER_CARD_IDS = ['csp', 'amex-gold', 'hilton-aspire', 'bce', 'cfu', 'boa-ccr', 'nfcu', 'fidelity-visa', 'apple-card'];
+
+const CARD_CATALOG = [
   {
     id: 'csp',
     name: 'Chase Sapphire Preferred',
@@ -156,9 +160,216 @@ const DEFAULT_CARDS = [
     ],
     notes: 'Only earns the listed rate when paid with Apple Pay — physical card taps/swipes drop to 1%. This tool assumes Apple Pay is used unless it is a partner-3% merchant paid by physical card.',
   },
+  {
+    id: 'citi-double-cash',
+    name: 'Citi Double Cash',
+    short: 'Double Cash',
+    network: 'Mastercard',
+    color: '#1a4f9c',
+    unit: '%',
+    pointValue: 1.0,
+    base: { rate: 2, label: 'Everything, no categories (1% on purchase + 1% on payment)' },
+    categories: [],
+    notes: 'Flat 2% on everything — no annual fee, no categories to track. Great default/backup card.',
+  },
+  {
+    id: 'citi-custom-cash',
+    name: 'Citi Custom Cash',
+    short: 'Custom Cash',
+    network: 'Mastercard',
+    color: '#0f7a5c',
+    unit: '%',
+    pointValue: 1.0,
+    base: { rate: 1, label: 'Everything else' },
+    categories: [
+      { key: 'top-category', rate: 5, label: 'Your top eligible spend category this billing cycle', cap: '$500/month combined', keywords: ['restaurant', 'dining', 'dinner', 'lunch', 'gas', 'gas station', 'fuel', 'grocery', 'groceries', 'supermarket', 'whole foods', 'streaming', 'netflix', 'hulu', 'drugstore', 'cvs', 'walgreens', 'home depot', 'lowes', 'home improvement', 'gym', 'fitness club', 'concert', 'ticketmaster', 'live entertainment', 'transit', 'train', 'bus', 'toll'] },
+    ],
+    notes: 'Automatically applies 5% to whichever eligible category you spend most in that billing cycle (restaurants, gas, grocery, select travel/transit, streaming, drugstores, home improvement, fitness, live entertainment) — capped at $500/month. Closed to new applicants as of May 2026, but still valid if you already have one.',
+  },
+  {
+    id: 'discover-it-cash-back',
+    name: 'Discover it Cash Back',
+    short: 'Discover it',
+    network: 'Discover',
+    color: '#e57200',
+    unit: '%',
+    pointValue: 1.0,
+    base: { rate: 1, label: 'Everything else' },
+    editableChoiceCategory: true,
+    choiceCategoryOptions: ['grocery-wholesale', 'restaurants-home-improvement', 'gas-transit-drugstore', 'amazon-drugstore'],
+    choiceCategory: 'gas-transit-drugstore',
+    categoryDefinitions: {
+      'grocery-wholesale': { label: 'Grocery stores, wholesale clubs & streaming (Q1-style)', keywords: ['grocery', 'groceries', 'supermarket', 'whole foods', 'costco', 'bjs', "bj's", 'sams club', "sam's club", 'streaming', 'netflix'] },
+      'restaurants-home-improvement': { label: 'Restaurants & home improvement (Q2-style)', keywords: ['restaurant', 'dining', 'dinner', 'lunch', 'home depot', 'lowes', 'home improvement'] },
+      'gas-transit-drugstore': { label: 'Gas, transportation & drugstores (Q3-style)', keywords: ['gas', 'gas station', 'fuel', 'transit', 'train', 'bus', 'uber ride', 'lyft', 'cvs', 'walgreens', 'drugstore'] },
+      'amazon-drugstore': { label: 'Amazon.com & drugstores (Q4-style)', keywords: ['amazon', 'online order', 'cvs', 'walgreens', 'drugstore'] },
+    },
+    choiceRate: 5,
+    cap: '$1,500/quarter (must activate)',
+    notes: 'Rotating 5% categories change every quarter and require activation — pick whichever is currently active in your Discover account. Falls back to 1% outside the active category or once you hit the $1,500 quarterly cap.',
+  },
+  {
+    id: 'venture-x',
+    name: 'Capital One Venture X',
+    short: 'Venture X',
+    network: 'Visa',
+    color: '#004977',
+    unit: 'x',
+    pointValue: 1.0,
+    base: { rate: 2, label: 'Everything else' },
+    categories: [
+      { key: 'c1-hotel-car', rate: 10, label: 'Hotels & rental cars via Capital One Travel', keywords: ['capital one travel hotel', 'capital one travel car'] },
+      { key: 'c1-flight-vacation', rate: 5, label: 'Flights & vacation rentals via Capital One Travel', keywords: ['capital one travel flight', 'capital one travel vacation rental'] },
+      { key: 'c1-entertainment', rate: 5, label: 'Capital One Entertainment purchases', keywords: ['capital one entertainment', 'ticketmaster capital one'] },
+    ],
+    notes: 'Unlimited 2x miles on every purchase with no categories to track — strong everyday flat-rate card once you clear the $395 fee via travel credits.',
+  },
+  {
+    id: 'savorone',
+    name: 'Capital One SavorOne',
+    short: 'SavorOne',
+    network: 'Mastercard',
+    color: '#8a1538',
+    unit: '%',
+    pointValue: 1.0,
+    base: { rate: 1, label: 'Everything else' },
+    categories: [
+      { key: 'dining', rate: 3, label: 'Dining', keywords: ['restaurant', 'dining', 'dinner', 'lunch', 'breakfast', 'takeout', 'doordash', 'ubereats', 'uber eats', 'grubhub', 'food delivery', 'bar', 'brewery', 'coffee', 'cafe', 'starbucks'] },
+      { key: 'entertainment', rate: 3, label: 'Entertainment', keywords: ['movie', 'movie theater', 'concert', 'ticketmaster', 'live entertainment', 'amusement park', 'bowling'] },
+      { key: 'streaming', rate: 3, label: 'Popular streaming services', keywords: ['netflix', 'hulu', 'disney+', 'disney plus', 'spotify', 'apple music', 'apple tv', 'streaming'] },
+      { key: 'grocery', rate: 3, label: 'Grocery stores (excl. Walmart/Target/superstores)', keywords: ['grocery', 'groceries', 'supermarket', 'whole foods', 'trader joe', 'stop & shop', 'stop and shop', 'shaws'] },
+    ],
+    notes: 'No annual fee, strong 3% across dining/entertainment/streaming/grocery — solid everyday lifestyle card.',
+  },
+  {
+    id: 'quicksilver',
+    name: 'Capital One Quicksilver',
+    short: 'Quicksilver',
+    network: 'Mastercard',
+    color: '#565a5c',
+    unit: '%',
+    pointValue: 1.0,
+    base: { rate: 1.5, label: 'Everything, no categories' },
+    categories: [],
+    notes: 'Flat 1.5% on everything — no annual fee, no categories. Simple backup/default card.',
+  },
+  {
+    id: 'wf-active-cash',
+    name: 'Wells Fargo Active Cash',
+    short: 'Active Cash',
+    network: 'Visa',
+    color: '#d71e28',
+    unit: '%',
+    pointValue: 1.0,
+    base: { rate: 2, label: 'Everything, no categories' },
+    categories: [],
+    notes: 'Flat 2% on everything — no annual fee, no categories to track.',
+  },
+  {
+    id: 'amex-platinum',
+    name: 'Amex Platinum',
+    short: 'Platinum',
+    network: 'Amex',
+    color: '#8f8f8f',
+    unit: 'x',
+    pointValue: 1.0,
+    base: { rate: 1, label: 'Everything else' },
+    categories: [
+      { key: 'flight', rate: 5, label: 'Flights booked direct with airline or Amex Travel', cap: '$500,000/yr', keywords: ['flight', 'airfare', 'airline', 'airline ticket', 'plane ticket', 'book a flight', 'delta', 'united', 'american airlines', 'southwest', 'jetblue', 'spirit airlines', 'alaska airlines'] },
+      { key: 'hotel', rate: 5, label: 'Prepaid hotels booked via Amex Travel', keywords: ['amex travel hotel', 'prepaid hotel'] },
+    ],
+    notes: 'Premium travel card — 5x on flights/prepaid hotels is strong, but 1x elsewhere means it rarely wins outside travel spend. $895 annual fee offset mainly by travel credits/lounge access, not everyday cash back.',
+  },
+  {
+    id: 'amex-bcp',
+    name: 'Amex Blue Cash Preferred',
+    short: 'Blue Cash Preferred',
+    network: 'Amex',
+    color: '#1f6fb2',
+    unit: '%',
+    pointValue: 1.0,
+    base: { rate: 1, label: 'Everything else' },
+    categories: [
+      { key: 'grocery', rate: 6, label: 'U.S. supermarkets', cap: '$6,000/yr', keywords: ['grocery', 'groceries', 'supermarket', 'whole foods', 'trader joe', 'stop & shop', 'stop and shop', 'shaws'] },
+      { key: 'streaming', rate: 6, label: 'Select U.S. streaming subscriptions', keywords: ['netflix', 'hulu', 'disney+', 'disney plus', 'spotify', 'apple music', 'apple tv', 'hbo max', 'peacock', 'youtube premium', 'youtube tv', 'streaming'] },
+      { key: 'gas-transit', rate: 3, label: 'U.S. gas stations & transit', keywords: ['gas', 'gas station', 'fuel', 'exxon', 'mobil', 'shell', 'chevron', 'transit', 'train', 'bus', 'toll', 'parking', 'uber ride', 'lyft', 'taxi'] },
+    ],
+    notes: 'Best-in-class 6% grocery card up to $6,000/yr, plus 6% streaming. $95 annual fee ($0 first year) — easily worth it for a household that spends on groceries.',
+  },
+  {
+    id: 'csr',
+    name: 'Chase Sapphire Reserve',
+    short: 'CSR',
+    network: 'Visa',
+    color: '#03203d',
+    unit: 'x',
+    pointValue: 1.0,
+    base: { rate: 1, label: 'Everything else' },
+    categories: [
+      { key: 'chase-travel', rate: 8, label: 'All purchases via Chase Travel (incl. The Edit)', keywords: ['chase travel', 'flight booked through chase', 'hotel booked through chase', 'the edit'] },
+      { key: 'flight-hotel-direct', rate: 4, label: 'Flights & hotels booked directly', keywords: ['flight', 'airfare', 'airline', 'airline ticket', 'plane ticket', 'book a flight', 'delta', 'united', 'american airlines', 'southwest', 'jetblue', 'spirit airlines', 'alaska airlines', 'hotel', 'motel'] },
+      { key: 'dining', rate: 3, label: 'Dining worldwide (incl. takeout & delivery)', keywords: ['restaurant', 'dining', 'dinner', 'lunch', 'breakfast', 'takeout', 'doordash', 'ubereats', 'uber eats', 'grubhub', 'food delivery', 'coffee', 'cafe', 'bar', 'brewery', 'starbucks'] },
+    ],
+    notes: 'Premium travel card with a $795 annual fee offset by travel/dining credits. Strongest when booking through the Chase Travel portal (8x) or dining out (3x).',
+  },
+  {
+    id: 'freedom-flex',
+    name: 'Chase Freedom Flex',
+    short: 'Freedom Flex',
+    network: 'Mastercard',
+    color: '#0a5ec9',
+    unit: '%',
+    pointValue: 1.0,
+    base: { rate: 1, label: 'Everything else' },
+    editableChoiceCategory: true,
+    choiceCategoryOptions: ['grocery-gas', 'home-improvement-gym', 'gas-transit', 'amazon-target'],
+    choiceCategory: 'gas-transit',
+    categoryDefinitions: {
+      'grocery-gas': { label: 'Grocery stores & gas stations (Q1-style)', keywords: ['grocery', 'groceries', 'supermarket', 'whole foods', 'gas', 'gas station', 'fuel'] },
+      'home-improvement-gym': { label: 'Home improvement & gyms (Q2-style)', keywords: ['home depot', 'lowes', 'home improvement', 'gym', 'fitness club'] },
+      'gas-transit': { label: 'Gas stations & select online merchants (Q3-style)', keywords: ['gas', 'gas station', 'fuel', 'online order', 'online shopping'] },
+      'amazon-target': { label: 'Amazon.com & PayPal (Q4-style)', keywords: ['amazon', 'paypal', 'online order'] },
+    },
+    choiceRate: 5,
+    cap: '$1,500/quarter (must activate)',
+    always: [
+      { key: 'chase-travel', rate: 5, label: 'Travel via Chase Travel', keywords: ['chase travel', 'flight booked through chase', 'hotel booked through chase'] },
+      { key: 'dining', rate: 3, label: 'Dining, incl. takeout & delivery', keywords: ['restaurant', 'dining', 'dinner', 'lunch', 'breakfast', 'takeout', 'doordash', 'ubereats', 'uber eats', 'grubhub', 'food delivery', 'bar', 'coffee', 'cafe', 'starbucks'] },
+      { key: 'drugstore', rate: 3, label: 'Drugstores', keywords: ['cvs', 'walgreens', 'rite aid', 'drugstore', 'pharmacy'] },
+    ],
+    notes: 'Rotating 5% categories require quarterly activation, capped at $1,500/quarter — plus permanent 5% Chase Travel, 3% dining, 3% drugstores.',
+  },
+  {
+    id: 'us-bank-cash-plus',
+    name: 'US Bank Cash+',
+    short: 'Cash+',
+    network: 'Visa',
+    color: '#003366',
+    unit: '%',
+    pointValue: 1.0,
+    base: { rate: 1, label: 'Everything else' },
+    editableChoiceCategory: true,
+    choiceCategoryOptions: ['streaming-utilities', 'electronics-furniture', 'fitness-clothing', 'department-sporting'],
+    choiceCategory: 'streaming-utilities',
+    categoryDefinitions: {
+      'streaming-utilities': { label: 'TV/internet/streaming & home utilities', keywords: ['netflix', 'hulu', 'streaming', 'internet bill', 'cable bill', 'utility bill', 'electric bill', 'phone bill', 'cell phone'] },
+      'electronics-furniture': { label: 'Electronics & furniture stores', keywords: ['best buy', 'electronics', 'furniture', 'ikea', 'wayfair'] },
+      'fitness-clothing': { label: 'Gyms & select clothing stores', keywords: ['gym', 'fitness club', 'clothing store', 'apparel'] },
+      'department-sporting': { label: 'Department & sporting goods stores', keywords: ['department store', 'sporting goods', 'dicks sporting goods'] },
+    },
+    grocery: { rate: 2, label: 'Your chosen everyday category (gas, dining, or grocery)', keywords: ['gas', 'gas station', 'fuel', 'restaurant', 'dining', 'dinner', 'lunch', 'grocery', 'groceries', 'supermarket', 'whole foods'] },
+    choiceRate: 5,
+    cap: '$2,000/quarter combined (two 5% categories, must enroll)',
+    notes: 'Pick two 5% categories and one 2% everyday category each quarter — flexible but requires quarterly enrollment or it defaults to 1% everywhere.',
+  },
 ];
 
 // Deep clone helper
 function cloneDefaults() {
-  return JSON.parse(JSON.stringify(DEFAULT_CARDS));
+  const starters = CARD_CATALOG.filter((c) => STARTER_CARD_IDS.includes(c.id));
+  return JSON.parse(JSON.stringify(starters));
+}
+
+function cloneCatalog() {
+  return JSON.parse(JSON.stringify(CARD_CATALOG));
 }

@@ -593,6 +593,21 @@ main { flex: 1; padding: 0 var(--space-5) var(--space-16); }
   font-size: var(--text-sm);
 }
 .add-card-row .swatch-mini { width: 22px; height: 16px; border-radius: 4px; flex-shrink: 0; }
+.badge-business {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-2);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-warning);
+  background: var(--color-warning-highlight);
+  vertical-align: middle;
+  white-space: nowrap;
+}
 .add-card-row .add-icon {
   flex-shrink: 0;
   width: 26px;

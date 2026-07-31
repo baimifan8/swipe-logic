@@ -125,7 +125,7 @@
             <div class="result-identity">
               <div class="card-swatch" style="background:${card.color}"></div>
               <div>
-                <div class="result-name">${escapeHtml(card.name)}</div>
+                <div class="result-name">${escapeHtml(card.name)}${card.businessCard ? '<span class="badge-business">Business</span>' : ''}</div>
                 <div class="result-network">${escapeHtml(card.network)}</div>
               </div>
             </div>
@@ -212,7 +212,7 @@
       return `
         <div class="settings-card ${isOn ? '' : 'disabled'}" data-card-block="${card.id}">
           <button type="button" class="settings-card-head" data-toggle="${card.id}" role="switch" aria-checked="${isOn}" aria-label="${escapeHtml(card.name)}, ${isOn ? 'included in results' : 'hidden from results'}">
-            <div class="name"><span class="swatch-mini" style="background:${card.color}"></span>${escapeHtml(card.name)}</div>
+            <div class="name"><span class="swatch-mini" style="background:${card.color}"></span>${escapeHtml(card.name)}${card.businessCard ? '<span class="badge-business">Business</span>' : ''}</div>
             <span class="toggle-visibility" aria-hidden="true"></span>
           </button>
           ${choiceSelect}
@@ -231,7 +231,7 @@
     const addListHtml = filteredAddable.length
       ? filteredAddable.map((card) => `
           <button type="button" class="add-card-row" data-add="${card.id}">
-            <span class="name"><span class="swatch-mini" style="background:${card.color}"></span>${escapeHtml(card.name)}</span>
+            <span class="name"><span class="swatch-mini" style="background:${card.color}"></span>${escapeHtml(card.name)}${card.businessCard ? '<span class="badge-business">Business</span>' : ''}</span>
             <span class="add-icon" aria-hidden="true">+</span>
           </button>`).join('')
       : `<p class="add-empty">${cards.length ? 'No matching cards — try a different search.' : 'No cards left to add.'}</p>`;

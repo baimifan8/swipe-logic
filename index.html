@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <title>Best Card — Cashback Picker</title>
+  <meta name="description" content="Type what you're buying, instantly see which credit card in your wallet earns the most cash back or points." />
+
+  <!-- PWA / homescreen -->
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#0a7a52" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0a0e14" media="(prefers-color-scheme: dark)" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Best Card" />
+  <link rel="apple-touch-icon" href="./assets/icon-180.png" />
+  <link rel="icon" href="./assets/icon-192.png" type="image/png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&f[]=general-sans@600,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="./base.css" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 26 26" fill="none" aria-hidden="true">
+          <rect x="1" y="5" width="24" height="16" rx="3.2" fill="currentColor" opacity="0.14"/>
+          <rect x="1" y="5" width="24" height="16" rx="3.2" stroke="currentColor" stroke-width="1.6"/>
+          <rect x="1" y="9.2" width="24" height="3.4" fill="currentColor"/>
+          <path d="M5.5 16.5H11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="19.5" cy="16.7" r="2.1" fill="currentColor"/>
+        </svg>
+        <span>Best Card</span>
+      </div>
+      <button class="icon-btn" id="openSettings" aria-label="Manage your cards">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </header>
+
+    <main>
+      <div class="search-wrap">
+        <label class="search-label" for="query">What are you buying?</label>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.3-4.3"/>
+          </svg>
+          <input id="query" type="text" inputmode="search" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="e.g. Whole Foods, Delta flight, Netflix…" aria-label="What are you buying" />
+          <button class="clear-btn" id="clearQuery" aria-label="Clear search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="chips" id="chips" role="list" aria-label="Quick examples"></div>
+      </div>
+
+      <div id="resultsWrap"></div>
+    </main>
+
+    <footer class="legal">
+      Reward rates as published by each issuer, checked July 2026 — issuers can change categories or terms anytime. Verify in the issuer app before a big purchase. Not affiliated with any card issuer.
+    </footer>
+  </div>
+
+  <!-- Settings Sheet -->
+  <div class="sheet-overlay" id="sheetOverlay"></div>
+  <div class="sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h2 id="sheetTitle">Your cards</h2>
+      <button class="icon-btn" id="closeSettings" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="install-hint" id="installHint">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v13m0 0-4-4m4 4 4-4M5 21h14"/></svg>
+        <span>On iPhone: tap Share → <strong>Add to Home Screen</strong> to install this as an app icon.</span>
+        <button class="dismiss" id="dismissInstallHint" aria-label="Dismiss">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="cardSettingsList"></div>
+    </div>
+    <div class="settings-footer">
+      <button class="btn btn-secondary" id="resetDefaults">Reset to defaults</button>
+      <button class="btn btn-primary" id="doneSettings">Done</button>
+    </div>
+  </div>
+
+  <script src="./cards.js"></script>
+  <script src="./matcher.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

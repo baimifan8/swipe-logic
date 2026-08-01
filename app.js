@@ -14,6 +14,7 @@
   let enabled = {}; // id -> bool
   let $addCardSearch = null; // live reference to the add-card search input, re-queried each render
   let addCardSearchTerm = ''; // persisted across re-renders so typing survives DOM rebuilds
+  let addCardIssuerFilter = ''; // '' = all issuers; otherwise an exact issuer string from CARD_CATALOG
 
   function loadStateFromHash() {
     try {
@@ -261,18 +262,36 @@
 
     const walletIds = new Set(cards.map((c) => c.id));
     const addableCatalog = CARD_CATALOG.filter((c) => !walletIds.has(c.id));
+    const issuers = [...new Set(addableCatalog.map((c) => c.issuer).filter(Boolean))].sort();
     const query = normalizeAddSearch(addCardSearchTerm);
-    const filteredAddable = query
-      ? addableCatalog.filter((c) => c.name.toLowerCase().includes(query) || c.network.toLowerCase().includes(query))
-      : addableCatalog;
+    const hasFilter = !!query || !!addCardIssuerFilter;
 
-    const addListHtml = filteredAddable.length
-      ? filteredAddable.map((card) => `
+    let filteredAddable = addableCatalog;
+    if (addCardIssuerFilter) {
+      filteredAddable = filteredAddable.filter((c) => c.issuer === addCardIssuerFilter);
+    }
+    if (query) {
+      filteredAddable = filteredAddable.filter((c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.network.toLowerCase().includes(query) ||
+        (c.issuer || '').toLowerCase().includes(query)
+      );
+    }
+
+    let addListHtml;
+    if (!hasFilter) {
+      addListHtml = `<p class="add-empty">Search by name, network, or pick an issuer above to browse cards.</p>`;
+    } else if (filteredAddable.length) {
+      addListHtml = filteredAddable.map((card) => `
           <button type="button" class="add-card-row" data-add="${card.id}">
-            <span class="name"><span class="swatch-mini" style="background:${card.color}"></span>${escapeHtml(card.name)}${card.businessCard ? '<span class="badge-business">Business</span>' : ''}</span>
+            <span class="name"><span class="swatch-mini" style="background:${card.color}"></span>${escapeHtml(card.name)}${card.businessCard ? '<span class="badge-business">Business</span>' : ''}${card.cobranded ? '<span class="badge-cobrand">Co-brand</span>' : ''}</span>
             <span class="add-icon" aria-hidden="true">+</span>
-          </button>`).join('')
-      : `<p class="add-empty">${cards.length ? 'No matching cards — try a different search.' : 'No cards left to add.'}</p>`;
+          </button>`).join('');
+    } else {
+      addListHtml = `<p class="add-empty">${cards.length ? 'No matching cards — try a different search or issuer.' : 'No cards left to add.'}</p>`;
+    }
+
+    const issuerOptionsHtml = issuers.map((iss) => `<option value="${escapeHtml(iss)}" ${addCardIssuerFilter === iss ? 'selected' : ''}>${escapeHtml(iss)}</option>`).join('');
 
     $cardSettingsList.innerHTML = `
       <div class="wallet-section">
@@ -281,11 +300,24 @@
       </div>
       <div class="add-card-section">
         <h3 class="settings-subhead">Add a card</h3>
-        <input type="text" id="addCardSearch" class="add-card-search" placeholder="Search by card name or network…" value="${escapeHtml(addCardSearchTerm)}" />
+        <div class="add-card-controls">
+          <input type="text" id="addCardSearch" class="add-card-search" placeholder="Search by card name…" value="${escapeHtml(addCardSearchTerm)}" />
+          <select id="addCardIssuer" class="add-card-issuer-select" aria-label="Filter by issuer">
+            <option value="">All issuers</option>
+            ${issuerOptionsHtml}
+          </select>
+        </div>
         <div class="add-card-list">${addListHtml}</div>
       </div>`;
 
     $addCardSearch = document.getElementById('addCardSearch');
+    const $addCardIssuer = document.getElementById('addCardIssuer');
+    if ($addCardIssuer) {
+      $addCardIssuer.addEventListener('change', (e) => {
+        addCardIssuerFilter = e.target.value;
+        renderCardSettings();
+      });
+    }
 
     // wire toggle rows (whole row is tappable, not just a small icon)
     $cardSettingsList.querySelectorAll('[data-toggle]').forEach((btn) => {

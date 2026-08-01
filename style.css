@@ -548,10 +548,15 @@ main { flex: 1; padding: 0 var(--space-5) var(--space-16); }
 .wallet-section:first-child .settings-subhead { margin-top: 0; }
 
 .add-card-section { margin-top: var(--space-2); }
+.add-card-controls {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0 var(--space-5) var(--space-3);
+}
 .add-card-search {
   display: block;
-  width: calc(100% - var(--space-10));
-  margin: 0 var(--space-5) var(--space-3);
+  flex: 1 1 auto;
+  min-width: 0;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -560,6 +565,17 @@ main { flex: 1; padding: 0 var(--space-5) var(--space-16); }
   color: var(--color-text);
 }
 .add-card-search:focus { outline: none; border-color: var(--color-primary); }
+.add-card-issuer-select {
+  flex: 0 0 auto;
+  max-width: 42%;
+  padding: var(--space-3) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+.add-card-issuer-select:focus { outline: none; border-color: var(--color-primary); }
 
 .add-card-list {
   display: flex;
@@ -605,6 +621,21 @@ main { flex: 1; padding: 0 var(--space-5) var(--space-16); }
   letter-spacing: 0.04em;
   color: var(--color-warning);
   background: var(--color-warning-highlight);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.badge-cobrand {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-2);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+  background: var(--color-surface-offset);
   vertical-align: middle;
   white-space: nowrap;
 }

@@ -170,6 +170,21 @@ const CARD_CATALOG = [
     notes: 'Only earns the listed rate when paid with Apple Pay — physical card taps/swipes drop to 1%. This tool assumes Apple Pay is used unless it is a partner-3% merchant paid by physical card.',
   },
   {
+    id: 'robinhood-gold-card',
+    name: 'Robinhood Gold Card',
+    short: 'Robinhood Gold',
+    network: 'Visa',
+    issuer: 'Robinhood',
+    color: '#00c805',
+    unit: '%',
+    pointValue: 1.0,
+    base: { rate: 3, label: 'All purchases' },
+    categories: [
+      { key: 'travel-portal', rate: 5, label: 'Travel booked through the Robinhood Travel Portal', keywords: ['robinhood travel', 'robinhood travel portal'] },
+    ],
+    notes: 'Flat 3% cash back on everything (1 point = 1\u00a2 when redeemed as cash back to a Robinhood brokerage/spending account), plus 5% on travel booked via the Robinhood Travel Portal. No card annual fee, but requires an active Robinhood Gold subscription ($50/year) \u2014 factor that into the effective return. Cash-back redemption requires a Robinhood Financial brokerage account; other redemption options (gift cards, statement credit, merchandise) can be worth less than 1\u00a2/point.',
+  },
+  {
     id: 'citi-double-cash',
     name: 'Citi Double Cash',
     short: 'Double Cash',

@@ -149,19 +149,25 @@ function matchingCredits(card, query) {
     .map((m) => m.credit);
 }
 
-function rankCards(query, cards) {
+// `isCreditLive(card, credit)` lets the caller exclude credits already spent this
+// period (see credit-usage.js). Defaults to treating every credit as available,
+// so the matcher stays usable on its own.
+function rankCards(query, cards, isCreditLive) {
   const q = normalize(query);
   if (!q) return [];
+  const live = typeof isCreditLive === 'function' ? isCreditLive : () => true;
 
   const results = cards.map((card) => {
     const match = bestCategoryForCard(card, q);
     const effPct = effectivePercent(match.rate, match.unit, card.pointValue);
+    const credits = matchingCredits(card, q);
     return {
       card,
       match,
       effectivePercent: effPct,
       confidence: match.isBase ? 0 : match.score,
-      credits: matchingCredits(card, q),
+      credits,
+      liveCredits: credits.filter((c) => live(card, c)),
     };
   });
 
@@ -171,8 +177,9 @@ function rankCards(query, cards) {
       return b.effectivePercent - a.effectivePercent;
     }
     if (b.confidence !== a.confidence) return b.confidence - a.confidence;
-    // Same rate and same confidence: the card with a credit that applies here wins.
-    return (b.credits.length ? 1 : 0) - (a.credits.length ? 1 : 0);
+    // Same rate and same confidence: the card with an unspent credit wins. A
+    // credit already used this period breaks nothing — it isn't there to win.
+    return (b.liveCredits.length ? 1 : 0) - (a.liveCredits.length ? 1 : 0);
   });
 
   return results;

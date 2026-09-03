@@ -12,6 +12,7 @@ for Cloudflare, when you want a public link.
 | `cards.js` | Curated cards — earn rates, categories, matching keywords |
 | `catalog-generated.js` | Cards pulled from an upstream API by `tools/import-cards.mjs` |
 | `credits.js` | Recurring statement credits, hand-maintained |
+| `credit-usage.js` | What you've spent of each credit this period (device-local) |
 | `matcher.js` | Query → ranked cards, plus the credits that apply |
 
 ## Run it
@@ -165,10 +166,31 @@ $10/month Uber Cash.
 and give `annual` instead; `enroll: true` renders the badge that says the credit
 does nothing until you enroll in the issuer app.
 
-Credits deliberately do **not** change the ranking — only this app's user knows
-whether they've already spent this month's — but a matching credit does break a
-tie between two cards at the same rate, and one on a losing card is surfaced
-under the answer.
+Credits deliberately do **not** reorder results by rate — a credit can't be
+weighed against a multiplier without knowing the purchase amount — but a credit
+that still has room breaks a tie between two cards at the same rate, and one
+sitting on a losing card is surfaced under the answer.
+
+### Tracking what you've spent
+
+`credit-usage.js` tracks how much of each credit is gone this period, so the app
+stops recommending money you've already used.
+
+- On a result card, **Mark used** flips a credit to spent: it greys out, and the
+  answer stops mentioning it.
+- In the settings sheet, the **Credits** panel lists every credit in the wallet
+  with what's left of it, headed by the total still on the table this period.
+  Log a partial amount there ($120 of a $300 travel credit) and the answer says
+  "$180 left of its $300 a year Annual travel credit". Amounts clamp to the
+  allowance; a credit with no fixed amount gets a plain used/unused toggle.
+- Storage is keyed by *period*, not date: an entry recorded in `2026-09` simply
+  stops matching once the calendar turns over, so credits reset themselves with
+  no scheduled job and no clock to trust beyond the device's own. Stale entries
+  are pruned on load.
+
+Usage lives in this browser's `localStorage`, like the wallet — never sent to the
+server, and deliberately **not** included in a shared wallet link, since what you
+spent is yours and not part of a card list you hand someone.
 
 This file is maintained by hand and the importer never touches it: no free feed
 publishes credits, and they change on issuer whim. The seeded numbers were

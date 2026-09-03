@@ -20,6 +20,7 @@ const FILES = [
   'cards.js',
   'catalog-generated.js',
   'credits.js',
+  'credit-usage.js',
   'matcher.js',
   'app.js',
   'presence.js',

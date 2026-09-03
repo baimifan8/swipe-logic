@@ -205,15 +205,40 @@
     return 'Statement credit';
   }
 
-  function creditsBlock(credits, showNotes) {
+  // "$10 left of $10 · resets Oct 1", or a plain reset note when the credit has
+  // no fixed amount to count down.
+  function creditStatus(cardId, credit) {
+    const total = CreditUsage.allowance(credit);
+    const left = CreditUsage.remaining(cardId, credit);
+    const resets = CreditUsage.resetLabel(credit);
+    if (total === null) {
+      return CreditUsage.isSpent(cardId, credit) ? `Used · resets ${resets}` : `Resets ${resets}`;
+    }
+    if (left === 0) return `Used up · resets ${resets}`;
+    if (left < total) return `$${left} left of $${total} · resets ${resets}`;
+    return `Unused · resets ${resets}`;
+  }
+
+  function creditsBlock(cardId, credits, showNotes) {
     if (!credits || !credits.length) return '';
-    const rows = credits.map((c) => `
-      <div class="credit-row">
+    const rows = credits.map((c) => {
+      const spent = CreditUsage.isSpent(cardId, c);
+      return `
+      <div class="credit-row ${spent ? 'spent' : ''}">
         <span class="credit-amount">${escapeHtml(creditAmount(c))}</span>
         <span class="credit-label">${escapeHtml(c.label)}${c.enroll ? '<span class="credit-enroll" title="Does nothing until you enroll in the issuer app">enroll</span>' : ''}</span>
+        <button type="button" class="credit-toggle" data-credit-card="${escapeHtml(cardId)}" data-credit-label="${escapeHtml(c.label)}" aria-pressed="${spent}">${spent ? 'Mark unused' : 'Mark used'}</button>
+        <span class="credit-status">${escapeHtml(creditStatus(cardId, c))}</span>
         ${showNotes && c.note ? `<span class="credit-note">${escapeHtml(c.note)}</span>` : ''}
-      </div>`).join('');
+      </div>`;
+    }).join('');
     return `<div class="result-credits">${rows}</div>`;
+  }
+
+  // Find a credit object back from the data attributes on a rendered row.
+  function findCredit(cardId, label) {
+    const card = CATALOG_BY_ID[cardId];
+    return card && card.credits ? card.credits.find((c) => c.label === label) : null;
   }
 
   function answerLine(ranked) {
@@ -228,16 +253,21 @@
 
     // A credit can outweigh the rate on a small purchase, so it goes in the
     // headline: on the winning card if it has one, otherwise on whichever card
-    // in the wallet does.
+    // in the wallet does. Credits already spent this period are left out — the
+    // whole point of tracking them is to stop being told about money that's gone.
     let creditHtml = '';
-    if (top.credits.length) {
-      const c = top.credits[0];
-      creditHtml = `<p class="answer-credit">Stacks with its <strong>${escapeHtml(creditAmount(c))} ${escapeHtml(c.label)}</strong>${c.enroll ? ' (enroll first)' : ''}.</p>`;
+    if (top.liveCredits.length) {
+      const c = top.liveCredits[0];
+      const left = CreditUsage.remaining(top.card.id, c);
+      const amount = left !== null && left < CreditUsage.allowance(c) ? `$${left} left of its` : 'its';
+      creditHtml = `<p class="answer-credit">Stacks with ${amount} <strong>${escapeHtml(creditAmount(c))} ${escapeHtml(c.label)}</strong>${c.enroll ? ' (enroll first)' : ''}.</p>`;
     } else {
-      const other = ranked.slice(1).find((r) => r.credits.length);
+      const other = ranked.slice(1).find((r) => r.liveCredits.length);
       if (other) {
-        const c = other.credits[0];
-        creditHtml = `<p class="answer-credit">If your <strong>${escapeHtml(other.card.short || other.card.name)}</strong> still has its ${escapeHtml(creditAmount(c))} ${escapeHtml(c.label)} unused, that beats the rate difference on a small purchase.</p>`;
+        const c = other.liveCredits[0];
+        const left = CreditUsage.remaining(other.card.id, c);
+        const amount = left !== null ? `$${left}` : 'a';
+        creditHtml = `<p class="answer-credit">Your <strong>${escapeHtml(other.card.short || other.card.name)}</strong> still has ${escapeHtml(amount)} of its ${escapeHtml(c.label)} — on a small purchase that beats the rate difference.</p>`;
       }
     }
     return `<div class="answer">${ANSWER_MARK}<div><p class="answer-text">${body}</p>${creditHtml}</div></div>`;
@@ -248,7 +278,7 @@
     const list = activeCards();
     if (!list.length) return renderNoCards();
 
-    const ranked = rankCards(query, list);
+    const ranked = rankCards(query, list, (card, credit) => !CreditUsage.isSpent(card.id, credit));
     if (!ranked.length) return renderEmpty();
 
     const html = ranked.map((r, i) => {
@@ -281,7 +311,7 @@
             <span class="cat-label">${escapeHtml(match.label)}</span>
             ${match.cap ? `<span class="cat-cap">Cap: ${escapeHtml(match.cap)}</span>` : ''}
           </div>
-          ${creditsBlock(r.credits, isBest)}
+          ${creditsBlock(card.id, r.credits, isBest)}
           ${switchHint}
           ${card.notes && isBest ? `<div class="result-note">${escapeHtml(card.notes)}</div>` : ''}
         </article>`;
@@ -365,6 +395,61 @@
         </div>`;
     }).join('');
 
+    // Credits panel: every credit in the wallet with what's left of it this
+    // period. This is the "what am I leaving on the table" view, and the place
+    // to log a partial amount — the result cards only do the fast used/unused tap.
+    const CADENCE_ORDER = { month: 0, quarter: 1, half: 2, year: 3 };
+    const creditRows = [];
+    for (const card of cards) {
+      for (const credit of card.credits || []) creditRows.push({ card, credit });
+    }
+    creditRows.sort((a, b) =>
+      (CADENCE_ORDER[a.credit.cadence] ?? 9) - (CADENCE_ORDER[b.credit.cadence] ?? 9) ||
+      a.card.name.localeCompare(b.card.name));
+
+    let creditsSectionHtml = '';
+    if (creditRows.length) {
+      let leftSum = 0;
+      let totalSum = 0;
+      for (const { card, credit } of creditRows) {
+        const total = CreditUsage.allowance(credit);
+        if (total !== null) {
+          totalSum += total;
+          leftSum += CreditUsage.remaining(card.id, credit);
+        }
+      }
+      const rowsHtml = creditRows.map(({ card, credit }) => {
+        const total = CreditUsage.allowance(credit);
+        const usedNow = CreditUsage.used(card.id, credit);
+        const spent = CreditUsage.isSpent(card.id, credit);
+        const control = total === null
+          ? `<button type="button" class="credit-manage-toggle" data-credit-card="${escapeHtml(card.id)}" data-credit-label="${escapeHtml(credit.label)}" aria-pressed="${spent}">${spent ? 'Mark unused' : 'Mark used'}</button>`
+          : `<label class="credit-manage-input">
+               <span>Used</span>
+               <input type="number" inputmode="decimal" min="0" max="${total}" step="1" value="${usedNow}"
+                      data-credit-card="${escapeHtml(card.id)}" data-credit-label="${escapeHtml(credit.label)}"
+                      aria-label="Dollars used of ${escapeHtml(card.name)} ${escapeHtml(credit.label)}" />
+               <span>of $${total}</span>
+             </label>`;
+        return `
+          <div class="credit-manage-row ${spent ? 'spent' : ''}">
+            <div class="credit-manage-head">
+              <span class="swatch-mini" style="background:${card.color}"></span>
+              <span class="credit-manage-name">${escapeHtml(card.short || card.name)} · ${escapeHtml(credit.label)}</span>
+            </div>
+            <div class="credit-manage-meta">${escapeHtml(creditAmount(credit))} · ${escapeHtml(creditStatus(card.id, credit))}</div>
+            <div class="credit-manage-controls">${control}</div>
+          </div>`;
+      }).join('');
+
+      creditsSectionHtml = `
+        <div class="credits-section">
+          <h3 class="settings-subhead">Credits (${totalSum ? `$${leftSum} of $${totalSum} left this period` : creditRows.length})</h3>
+          <p class="credits-blurb">Tracked on this device only, and each one resets itself when its period rolls over.</p>
+          ${rowsHtml}
+        </div>`;
+    }
+
     const walletIds = new Set(cards.map((c) => c.id));
     const addableCatalog = CARD_CATALOG.filter((c) => !walletIds.has(c.id));
     const issuers = [...new Set(addableCatalog.map((c) => c.issuer).filter(Boolean))].sort();
@@ -403,6 +488,7 @@
         <h3 class="settings-subhead">In your wallet (${cards.length})</h3>
         ${cards.length ? walletHtml : '<p class="add-empty">No cards yet — add one below.</p>'}
       </div>
+      ${creditsSectionHtml}
       <div class="add-card-section">
         <h3 class="settings-subhead">Add a card</h3>
         <div class="add-card-controls">
@@ -414,6 +500,25 @@
         </div>
         <div class="add-card-list">${addListHtml}</div>
       </div>`;
+
+    // Credits panel: log a partial amount, or flip the ones with no fixed amount.
+    $cardSettingsList.querySelectorAll('.credit-manage-input input').forEach((input) => {
+      input.addEventListener('change', () => {
+        const credit = findCredit(input.getAttribute('data-credit-card'), input.getAttribute('data-credit-label'));
+        if (!credit) return;
+        CreditUsage.setUsed(input.getAttribute('data-credit-card'), credit, input.value);
+        renderCardSettings();
+      });
+    });
+    $cardSettingsList.querySelectorAll('.credit-manage-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const cardId = btn.getAttribute('data-credit-card');
+        const credit = findCredit(cardId, btn.getAttribute('data-credit-label'));
+        if (!credit) return;
+        CreditUsage.toggle(cardId, credit);
+        renderCardSettings();
+      });
+    });
 
     $addCardSearch = document.getElementById('addCardSearch');
     const $addCardIssuer = document.getElementById('addCardIssuer');
@@ -499,6 +604,17 @@
 
   // ---------- Events ----------
   $query.addEventListener('input', onQueryChange);
+  // Credit rows are rebuilt on every keystroke, so the handler lives on the
+  // container rather than on each button.
+  $resultsWrap.addEventListener('click', (e) => {
+    const btn = e.target.closest('.credit-toggle');
+    if (!btn) return;
+    const cardId = btn.getAttribute('data-credit-card');
+    const credit = findCredit(cardId, btn.getAttribute('data-credit-label'));
+    if (!credit) return;
+    CreditUsage.toggle(cardId, credit);
+    renderResults($query.value);
+  });
   $clear.addEventListener('click', () => {
     $query.value = '';
     onQueryChange();

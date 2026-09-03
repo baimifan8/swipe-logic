@@ -5,7 +5,7 @@
 // pinned behind a stale cache. The cache only ever holds copies of files that
 // were served — it never holds wallet data, which lives in localStorage and is
 // untouched by anything here, including the old-cache cleanup on activate.
-const VERSION = 'v9';
+const VERSION = 'v10';
 const CACHE = `swipe-logic-${VERSION}`;
 const ASSETS = [
   './',
@@ -15,6 +15,7 @@ const ASSETS = [
   `./cards.js?v=${VERSION.slice(1)}`,
   `./catalog-generated.js?v=${VERSION.slice(1)}`,
   `./credits.js?v=${VERSION.slice(1)}`,
+  `./credit-usage.js?v=${VERSION.slice(1)}`,
   `./matcher.js?v=${VERSION.slice(1)}`,
   `./app.js?v=${VERSION.slice(1)}`,
   `./presence.js?v=${VERSION.slice(1)}`,

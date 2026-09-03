@@ -5,6 +5,8 @@
   "description": "Type what you're buying, get the card in your wallet that earns the most on it.",
   "scripts": {
     "start": "node server.js",
+    "release": "node tools/bump-version.mjs",
+    "check": "node tools/bump-version.mjs --check",
     "build": "node tools/build-assets.mjs",
     "deploy": "wrangler deploy",
     "dev:worker": "wrangler dev",

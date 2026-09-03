@@ -8,10 +8,26 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
+
+// wrangler runs this before every deploy, which makes it the right place to
+// catch a file that index.html loads but nothing lists — that failure is
+// invisible locally and a 404 in production. Spawned rather than imported so it
+// works the same however wrangler invokes this script.
+try {
+  execFileSync(process.execPath, [path.join(ROOT, 'tools', 'bump-version.mjs'), '--check'], {
+    stdio: 'inherit',
+  });
+} catch {
+  // The check already printed exactly what's wrong; a Node stack trace on top
+  // of it would only bury the message.
+  console.error('[build-assets] aborted — fix the problems above, then build again.');
+  process.exit(1);
+}
 
 const FILES = [
   'index.html',

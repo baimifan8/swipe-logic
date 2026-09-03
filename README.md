@@ -98,6 +98,29 @@ git pull
 Old saved payloads (the pre-v2 format, which stored whole card objects) are
 migrated automatically the first time they're loaded.
 
+### Cutting a release
+
+One command bumps the cache version everywhere it has to agree — `VERSION` in
+`sw.js` and the `?v=` on every script tag in `index.html`:
+
+```sh
+npm run release   # v11 -> v12 in both files
+npm run check     # verify only, change nothing
+```
+
+It refuses to bump if anything is inconsistent, because a fresh version number
+can't repair a file that nothing lists. The same check runs automatically inside
+`npm run build`, so a bad state fails the deploy rather than shipping:
+
+- A script `index.html` loads that's missing from `sw.js` — works online, breaks
+  offline.
+- A script missing from `FILES` in `tools/build-assets.mjs` — works locally,
+  **404s in production**, since only listed files are copied into `dist/`.
+- A `?v=` that disagrees with `sw.js`.
+
+Adding a new script file means listing it in all three places. That's the one
+piece of bookkeeping in this repo, and this is what catches it.
+
 ## Adding cards
 
 Append an entry to one of the arrays in `cards.js` — `id`, `name`, `network`,

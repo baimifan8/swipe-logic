@@ -1,0 +1,44 @@
+{
+  // Deploy target for the public link: one Cloudflare Worker that serves the
+  // static app (dist/) and runs the session counter. Workers with static assets
+  // is what Cloudflare points new projects at — Pages is the older path.
+  //
+  //   npx wrangler login
+  //   npx wrangler deploy        # runs tools/build-assets.mjs first, via "build"
+  //
+  // Free plan covers this: static asset requests are free, and SQLite-backed
+  // Durable Objects (the counter) are included on the Workers free plan.
+  "name": "swipe-logic",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-01",
+
+  "build": {
+    "command": "node tools/build-assets.mjs"
+  },
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+
+  // One global counter object, so every visitor is counted against the same
+  // numbers regardless of which Cloudflare location served them.
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SESSIONS",
+        "class_name": "SessionCounter"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SessionCounter"]
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}

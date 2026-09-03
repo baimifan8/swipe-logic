@@ -8,8 +8,8 @@
 
   <!-- PWA / homescreen -->
   <link rel="manifest" href="./manifest.webmanifest" />
-  <meta name="theme-color" content="#0a7a52" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#0a0e14" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#262624" media="(prefers-color-scheme: dark)" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Swipe Logic" />
@@ -19,8 +19,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&f[]=general-sans@600,700&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="./base.css" />
   <link rel="stylesheet" href="./style.css" />
@@ -38,29 +37,40 @@
         </svg>
         <span>Swipe Logic</span>
       </div>
-      <button class="icon-btn" id="openSettings" aria-label="Manage your cards">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-      </button>
+      <div class="topbar-right">
+        <span class="presence" id="presence" hidden aria-live="polite"></span>
+        <button class="icon-btn" id="openSettings" aria-label="Manage your cards">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <main>
-      <div class="search-wrap">
-        <label class="search-label" for="query">What are you buying?</label>
-        <div class="search-box">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.3-4.3"/>
-          </svg>
-          <input id="query" type="text" inputmode="search" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="e.g. Whole Foods, Delta flight, Netflix…" aria-label="What are you buying" />
-          <button class="clear-btn" id="clearQuery" aria-label="Clear search">
+      <div class="composer-wrap">
+        <h1 class="greeting">What are you <span class="greeting-accent">buying</span>?</h1>
+        <div class="composer">
+          <input id="query" type="text" inputmode="search" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Whole Foods, Delta flight, Netflix…" aria-label="What are you buying" />
+          <button class="clear-btn" id="clearQuery" aria-label="Clear">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>
+          <button class="send-btn" id="submitQuery" aria-label="See the answer" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          </button>
+        </div>
+        <!-- Optional: with an amount, a credit can be weighed against a multiplier
+             in dollars, which is the only way to rank the two against each other. -->
+        <div class="amount-row">
+          <label class="amount-field" for="amount">
+            <span class="amount-prefix" aria-hidden="true">$</span>
+            <input id="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="Amount" aria-label="Purchase amount, optional" />
+          </label>
+          <span class="amount-hint" id="amountHint">Optional — with an amount I can rank credits against points in dollars.</span>
         </div>
         <div class="chips" id="chips" role="list" aria-label="Quick examples"></div>
-        <p class="search-hint">These are just examples to try — type anything (a merchant, brand, or category). Cards with different travel/flight rules (direct booking vs. portal vs. partner) can rank differently for the same trip.</p>
+        <p class="search-hint">Answers update as you type — a merchant, brand, or category all work. Cards with different travel rules (direct booking vs. portal vs. partner) can rank differently for the same trip.</p>
       </div>
 
       <div id="resultsWrap"></div>
@@ -97,8 +107,14 @@
     </div>
   </div>
 
-  <script src="./cards.js?v=7"></script>
-  <script src="./matcher.js?v=7"></script>
-  <script src="./app.js?v=7"></script>
+  <script src="./cards.js?v=11"></script>
+  <!-- Imported cards (tools/import-cards.mjs) and hand-kept statement credits.
+       Both merge into CARD_CATALOG, so they must load after cards.js. -->
+  <script src="./catalog-generated.js?v=11"></script>
+  <script src="./credits.js?v=11"></script>
+  <script src="./credit-usage.js?v=11"></script>
+  <script src="./matcher.js?v=11"></script>
+  <script src="./app.js?v=11"></script>
+  <script src="./presence.js?v=11"></script>
 </body>
 </html>

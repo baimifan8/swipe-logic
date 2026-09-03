@@ -4,7 +4,11 @@
 (function () {
   'use strict';
 
-  const HEARTBEAT_MS = 30 * 1000;
+  // 15s, not 30: this doubles as how quickly the badge notices someone else
+  // arriving or leaving, and at 30 the number sat still long enough to look
+  // broken. Requests scale with actual use — this is a look-something-up app,
+  // not one people leave open — so a session costs a handful of beats.
+  const HEARTBEAT_MS = 15 * 1000;
   const SID_KEY = 'swipe-logic-sid';
   const $badge = document.getElementById('presence');
   if (!$badge) return;

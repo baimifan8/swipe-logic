@@ -196,7 +196,28 @@
       <path d="M12 2.2c.5 0 .9.4.9.9v5.3l3.4-3.4a.9.9 0 1 1 1.3 1.3l-3.4 3.4h5.3a.9.9 0 0 1 0 1.8h-5.3l3.4 3.4a.9.9 0 1 1-1.3 1.3l-3.4-3.4v5.3a.9.9 0 0 1-1.8 0v-5.3l-3.4 3.4a.9.9 0 0 1-1.3-1.3l3.4-3.4H4.5a.9.9 0 0 1 0-1.8h5.3L6.4 6.3a.9.9 0 0 1 1.3-1.3l3.4 3.4V3.1c0-.5.4-.9.9-.9z"/>
     </svg>`;
 
-  function answerLine(top) {
+  const CADENCE_LABEL = { month: 'a month', quarter: 'a quarter', half: 'twice a year', year: 'a year' };
+
+  // "$10 a month" when the per-period amount is known, otherwise the annual total.
+  function creditAmount(credit) {
+    if (typeof credit.amount === 'number') return `$${credit.amount} ${CADENCE_LABEL[credit.cadence] || ''}`.trim();
+    if (typeof credit.annual === 'number') return `$${credit.annual} a year`;
+    return 'Statement credit';
+  }
+
+  function creditsBlock(credits, showNotes) {
+    if (!credits || !credits.length) return '';
+    const rows = credits.map((c) => `
+      <div class="credit-row">
+        <span class="credit-amount">${escapeHtml(creditAmount(c))}</span>
+        <span class="credit-label">${escapeHtml(c.label)}${c.enroll ? '<span class="credit-enroll" title="Does nothing until you enroll in the issuer app">enroll</span>' : ''}</span>
+        ${showNotes && c.note ? `<span class="credit-note">${escapeHtml(c.note)}</span>` : ''}
+      </div>`).join('');
+    return `<div class="result-credits">${rows}</div>`;
+  }
+
+  function answerLine(ranked) {
+    const top = ranked[0];
     const { card, match } = top;
     const rate = card.unit === '%' ? pct(match.rate) : `${match.rate}x`;
     const name = `<strong>${escapeHtml(card.name)}</strong>`;
@@ -204,7 +225,22 @@
     const body = match.isBase
       ? `Nothing in your wallet has a bonus category for that — ${name} is the best of the flat rates at ${rateHtml}.`
       : `Use your ${name} — ${rateHtml} on ${escapeHtml(match.label.replace(/\s*\(.*\)\s*$/, ''))}.`;
-    return `<div class="answer">${ANSWER_MARK}<p class="answer-text">${body}</p></div>`;
+
+    // A credit can outweigh the rate on a small purchase, so it goes in the
+    // headline: on the winning card if it has one, otherwise on whichever card
+    // in the wallet does.
+    let creditHtml = '';
+    if (top.credits.length) {
+      const c = top.credits[0];
+      creditHtml = `<p class="answer-credit">Stacks with its <strong>${escapeHtml(creditAmount(c))} ${escapeHtml(c.label)}</strong>${c.enroll ? ' (enroll first)' : ''}.</p>`;
+    } else {
+      const other = ranked.slice(1).find((r) => r.credits.length);
+      if (other) {
+        const c = other.credits[0];
+        creditHtml = `<p class="answer-credit">If your <strong>${escapeHtml(other.card.short || other.card.name)}</strong> still has its ${escapeHtml(creditAmount(c))} ${escapeHtml(c.label)} unused, that beats the rate difference on a small purchase.</p>`;
+      }
+    }
+    return `<div class="answer">${ANSWER_MARK}<div><p class="answer-text">${body}</p>${creditHtml}</div></div>`;
   }
 
   function renderResults(query) {
@@ -245,12 +281,13 @@
             <span class="cat-label">${escapeHtml(match.label)}</span>
             ${match.cap ? `<span class="cat-cap">Cap: ${escapeHtml(match.cap)}</span>` : ''}
           </div>
+          ${creditsBlock(r.credits, isBest)}
           ${switchHint}
           ${card.notes && isBest ? `<div class="result-note">${escapeHtml(card.notes)}</div>` : ''}
         </article>`;
     }).join('');
 
-    $resultsWrap.innerHTML = `${answerLine(ranked[0])}<div class="results">${html}</div>`;
+    $resultsWrap.innerHTML = `${answerLine(ranked)}<div class="results">${html}</div>`;
   }
 
   function renderChips() {

@@ -136,6 +136,19 @@ function bestCategoryForCard(card, query) {
   };
 }
 
+// Recurring statement credits (credits.js) that apply to this purchase, best match first.
+// Credits are reported alongside the rate rather than folded into it: a $10/month
+// Uber credit is worth more than any multiplier on a small order, but only until
+// it's spent, and only this app's user knows whether they've used it yet.
+function matchingCredits(card, query) {
+  if (!card.credits || !card.credits.length) return [];
+  return card.credits
+    .map((credit) => ({ credit, score: keywordScore(query, credit.keywords) }))
+    .filter((m) => m.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map((m) => m.credit);
+}
+
 function rankCards(query, cards) {
   const q = normalize(query);
   if (!q) return [];
@@ -148,6 +161,7 @@ function rankCards(query, cards) {
       match,
       effectivePercent: effPct,
       confidence: match.isBase ? 0 : match.score,
+      credits: matchingCredits(card, q),
     };
   });
 
@@ -156,7 +170,9 @@ function rankCards(query, cards) {
     if (Math.abs(b.effectivePercent - a.effectivePercent) > 0.01) {
       return b.effectivePercent - a.effectivePercent;
     }
-    return b.confidence - a.confidence;
+    if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+    // Same rate and same confidence: the card with a credit that applies here wins.
+    return (b.credits.length ? 1 : 0) - (a.credits.length ? 1 : 0);
   });
 
   return results;

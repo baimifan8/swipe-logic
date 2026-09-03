@@ -1,0 +1,76 @@
+name: Refresh card catalog
+
+# Pulls fresh earn rates into catalog-generated.js and opens a PR with the diff.
+# Nothing auto-merges: card data is the whole product, so a human reads the diff.
+#
+# Requires two repository secrets (Settings -> Secrets and variables -> Actions):
+#   AWARDWALLET_API_USER, AWARDWALLET_API_PASS  — free key from https://awardwallet.com/api/cc
+# Without them the job exits cleanly instead of failing every month.
+
+on:
+  schedule:
+    - cron: '17 9 1 * *' # 09:17 UTC on the 1st of each month
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check for credentials
+        id: creds
+        env:
+          USER_SECRET: ${{ secrets.AWARDWALLET_API_USER }}
+        run: |
+          if [ -z "$USER_SECRET" ]; then
+            echo "No AWARDWALLET_API_USER secret set — skipping the refresh."
+            echo "have=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "have=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Import cards
+        if: steps.creds.outputs.have == 'true'
+        id: import
+        env:
+          AWARDWALLET_API_USER: ${{ secrets.AWARDWALLET_API_USER }}
+          AWARDWALLET_API_PASS: ${{ secrets.AWARDWALLET_API_PASS }}
+        run: |
+          node tools/import-cards.mjs | tee import.log
+          {
+            echo 'summary<<EOF'
+            cat import.log
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open a pull request
+        if: steps.creds.outputs.have == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/refresh-card-catalog
+          title: 'Refresh imported card catalog'
+          commit-message: 'Refresh imported card catalog'
+          delete-branch: true
+          add-paths: catalog-generated.js
+          body: |
+            Automated monthly import from the upstream card-data API.
+
+            ```
+            ${{ steps.import.outputs.summary }}
+            ```
+
+            Curated cards in `cards.js` are untouched — they win by id and by name,
+            so this diff only ever adds or updates *imported* cards. Statement
+            credits in `credits.js` are hand-maintained and are not part of this refresh.
+
+            Read the diff before merging: rates here go straight into the answers
+            people act on at a register.

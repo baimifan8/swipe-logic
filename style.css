@@ -328,6 +328,52 @@ main { flex: 1; padding: 0 var(--space-5) var(--space-16); }
 }
 .answer-text strong { font-weight: 600; }
 .answer-text .answer-rate { color: var(--color-primary); font-weight: 600; }
+.answer-credit {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.55;
+  margin-top: var(--space-2);
+}
+.answer-credit strong { color: var(--color-text); font-weight: 600; }
+
+/* Statement credits that apply to this purchase (credits.js) */
+.result-credits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px dashed color-mix(in oklab, var(--color-primary) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--color-primary-highlight) 55%, transparent);
+}
+.credit-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); font-size: var(--text-sm); }
+.credit-amount {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-xs);
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+.credit-label { font-weight: 600; }
+.credit-enroll {
+  margin-left: var(--space-2);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-warning);
+  background: var(--color-warning-highlight);
+  white-space: nowrap;
+}
+.credit-note {
+  flex-basis: 100%;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
 
 .results { display: flex; flex-direction: column; gap: var(--space-3); }
 

@@ -2,9 +2,17 @@
 
 Type what you're buying, get the card in your wallet that earns the most on it.
 
-Everything is static: `index.html` plus three scripts. `server.js` is an optional
-zero-dependency Node server that serves those files and counts how many people
-are using the app right now.
+Everything is static: `index.html` plus a handful of scripts. `server.js` is an
+optional zero-dependency Node server that serves those files and counts how many
+people are using the app right now; `worker/index.js` is the same two endpoints
+for Cloudflare, when you want a public link.
+
+| File | What it holds |
+| --- | --- |
+| `cards.js` | Curated cards — earn rates, categories, matching keywords |
+| `catalog-generated.js` | Cards pulled from an upstream API by `tools/import-cards.mjs` |
+| `credits.js` | Recurring statement credits, hand-maintained |
+| `matcher.js` | Query → ranked cards, plus the credits that apply |
 
 ## Run it
 
@@ -18,6 +26,32 @@ You can also drop the folder onto any static host (or open `index.html`
 directly). Without `server.js` the app works exactly the same — the live
 session counter simply hides itself, since nothing answers `/api/session`.
 
+## Put it on a public link (Cloudflare Workers)
+
+`wrangler.jsonc` deploys the app as a single Worker: static files plus the
+session counter, on the free plan. Workers with static assets is where
+Cloudflare points new projects — Pages is the older path.
+
+```sh
+npm install          # wrangler
+npx wrangler login
+npx wrangler deploy  # builds dist/ first, then deploys
+```
+
+That prints a `https://swipe-logic.<your-subdomain>.workers.dev` link, which is
+the shareable URL. For a custom domain, add the domain to Cloudflare (registrar
+or nameservers), then **Workers & Pages → swipe-logic → Settings → Domains &
+Routes → Add custom domain**. HTTPS is issued automatically; the only cost is
+the domain registration.
+
+The counter runs on one SQLite-backed Durable Object, included on the Workers
+free plan, so every visitor is counted against the same numbers no matter which
+Cloudflare location serves them. `dist/` is a build artifact — gitignored, and
+rebuilt by `npm run build` on every deploy.
+
+Deploying does not retire `server.js`: both speak the same two endpoints, so the
+app behaves identically self-hosted and deployed.
+
 ## Session tracker
 
 The badge in the header shows how many people have the app open right now, and
@@ -29,8 +63,12 @@ its tooltip adds today's count and the all-time session total.
 - The server stores nothing else: no IP addresses, no user agents, no queries,
   no wallet contents.
 - Counts live in `data/stats.json` (override with `SWIPE_DATA_DIR`). That
-  directory is gitignored and separate from the app files.
+  directory is gitignored and separate from the app files. Deployed, they live in
+  the Worker's Durable Object instead — same numbers, same shape.
 - `GET /api/stats` returns `{ active, today, allTime }` if you want to graph it.
+- "Active" is held in memory. Restarting the server, or the Durable Object being
+  evicted when idle, resets it to zero and it refills within one heartbeat;
+  today's and the all-time counts are stored and survive.
 
 ## Updating without losing anyone's cards
 
@@ -69,3 +107,70 @@ Cards with a user-selectable bonus category (Bank of America, Venmo) set
 
 Rates are transcribed from issuer terms and go stale — verify in the issuer's
 app before a large purchase.
+
+## Importing cards instead of typing them
+
+`tools/import-cards.mjs` pulls machine-readable earn rates from an upstream API
+and writes `catalog-generated.js`, so the catalog can grow without hand-entering
+every card.
+
+```sh
+npm run import:inspect   # print the raw upstream shape, change nothing
+npm run import:cards     # fetch, map, write catalog-generated.js
+node tools/import-cards.mjs --from-file saved.json   # map a saved response
+```
+
+It expects AwardWallet's Credit Card Bonus API, which is free — request a key at
+<https://awardwallet.com/api/cc> and set `AWARDWALLET_API_USER` and
+`AWARDWALLET_API_PASS` (or `AWARDWALLET_TOKEN`). Run `--inspect` once first: it
+prints an upstream record verbatim so you can check the field names against the
+mapping at the top of the script, and adjust in one place if they differ.
+`AWARDWALLET_CARDS_URL` overrides the endpoint.
+
+Rules the importer follows:
+
+- **Curated wins.** A card already in `cards.js` is skipped — matched by id *and*
+  by normalized name, so "Nordstrom Visa" doesn't get added next to
+  "Nordstrom Visa Signature Credit Card". Hand-tuned keywords, caps, colors and
+  notes are never overwritten.
+- **It only adds.** Everything it writes lands in `catalog-generated.js`; nothing
+  else in the repo is touched.
+- **Category names get real keywords.** The importer reads the curated catalog's
+  own vocabulary, so an imported "Restaurants" category inherits the same
+  keyword list dining categories already use. Merchant-level bonuses become their
+  own entries, which is what makes a specific store resolve on an imported card.
+- **`tools/overrides.json`** is applied last: `skipIds` drops a bad upstream
+  record, `cards.<id>` merges corrections over a generated one.
+
+`.github/workflows/refresh-cards.yml` runs this monthly and opens a PR with the
+diff. It needs `AWARDWALLET_API_USER` / `AWARDWALLET_API_PASS` as repository
+secrets, and skips cleanly if they're missing. Nothing auto-merges — card data is
+the whole product, so a human reads the diff.
+
+## Statement credits
+
+`credits.js` holds the other half of an answer: the recurring credits that make a
+card the right swipe even when its multiplier isn't the highest. Search
+"uber eats" with an Amex Gold in the wallet and the answer is 4x *plus* the
+$10/month Uber Cash.
+
+```js
+'amex-gold': [
+  { label: 'Uber Cash', amount: 10, cadence: 'month', annual: 120,
+    enroll: true, keywords: ['uber', 'uber eats'], note: '…' },
+]
+```
+
+`cadence` is `month`, `quarter`, `half` or `year`; omit `amount` when it varies
+and give `annual` instead; `enroll: true` renders the badge that says the credit
+does nothing until you enroll in the issuer app.
+
+Credits deliberately do **not** change the ranking — only this app's user knows
+whether they've already spent this month's — but a matching credit does break a
+tie between two cards at the same rate, and one on a losing card is surfaced
+under the answer.
+
+This file is maintained by hand and the importer never touches it: no free feed
+publishes credits, and they change on issuer whim. The seeded numbers were
+checked September 3, 2026. Re-check them when a card's annual fee changes, which
+is usually when the credits get reshuffled too.

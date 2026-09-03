@@ -1,0 +1,5 @@
+{
+  "_comment": "Hand corrections applied to imported cards, after mapping and before writing catalog-generated.js. skipIds drops an upstream card entirely; cards.<id> shallow-merges over the generated entry (use it for brand colors, better names, a corrected base rate). Curated cards in cards.js never reach here — they win by id automatically.",
+  "skipIds": [],
+  "cards": {}
+}

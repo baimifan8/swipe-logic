@@ -719,7 +719,51 @@
   renderEmpty();
 
   // Register a minimal service worker for installability + offline shell (best-effort; ignore failures)
+  //
+  // Getting an update into an *installed* copy is the hard part. A home-screen
+  // app is suspended rather than closed, so it can sit on an old build for days
+  // without ever doing the fresh page load that would notice a new one. Two
+  // things fix that: ask for an update check whenever the app comes back to the
+  // foreground, and reload once when a new service worker actually takes over.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    // The first controllerchange after a fresh install is the worker taking
+    // control for the first time, not an update — there's nothing newer to show,
+    // so it must not trigger a reload. Every one after that is a genuinely new
+    // build claiming the page. Tracked as a live flag rather than a snapshot
+    // taken at load: a tab that installed the worker itself and then stays open
+    // for hours still deserves the reload when the next build lands.
+    let controlled = !!navigator.serviceWorker.controller;
+    let reloading = false;
+
+    navigator.serviceWorker
+      .register('./sw.js')
+      .then((reg) => {
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg.update().catch(() => {});
+        });
+      })
+      .catch(() => {});
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!controlled) {
+        controlled = true; // first claim after install: nothing newer to show
+        return;
+      }
+      if (reloading) return;
+      reloading = true;
+      // Don't yank the page out from under someone mid-question: if they've
+      // typed something, wait until they put the app down.
+      if ($query.value.trim()) {
+        document.addEventListener(
+          'visibilitychange',
+          () => {
+            if (document.visibilityState === 'hidden') window.location.reload();
+          },
+          { once: true }
+        );
+      } else {
+        window.location.reload();
+      }
+    });
   }
 })();

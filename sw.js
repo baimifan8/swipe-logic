@@ -5,7 +5,7 @@
 // pinned behind a stale cache. The cache only ever holds copies of files that
 // were served — it never holds wallet data, which lives in localStorage and is
 // untouched by anything here, including the old-cache cleanup on activate.
-const VERSION = 'v12';
+const VERSION = 'v13';
 const CACHE = `swipe-logic-${VERSION}`;
 const ASSETS = [
   './',
@@ -40,8 +40,13 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/api/')) return; // live session counts must never be cached
 
+  // Navigations go straight past the browser's HTTP cache. Everything else can
+  // revalidate normally, but the page shell decides which script versions get
+  // loaded, so a stale copy of it pins the whole app to an old build.
+  const request = e.request.mode === 'navigate' ? new Request(e.request, { cache: 'reload' }) : e.request;
+
   e.respondWith(
-    fetch(e.request)
+    fetch(request)
       .then((res) => {
         if (res && res.status === 200 && res.type === 'basic') {
           const clone = res.clone();

@@ -9,45 +9,97 @@
   //     plain link later remembers this device's cards automatically.
   //  3. If neither exists (first-ever visit, no shared link), the wallet starts
   //     completely empty — nobody inherits anyone else's default cards.
+  //
+  // What gets stored is only a reference per card — its catalog id plus any
+  // setting the owner changed by hand. The card's rates, categories and notes
+  // are rehydrated from CARD_CATALOG on every load, so updating this app with
+  // new or corrected card data reaches existing wallets instead of leaving
+  // people on a stale snapshot, and no update path ever has to clear storage.
+  // v1 payloads (whole card objects) are migrated in place on first load.
   const STORAGE_KEY = 'swipe-logic-wallet-v1';
+  const SCHEMA_VERSION = 2;
+  const CATALOG_BY_ID = Object.fromEntries(CARD_CATALOG.map((c) => [c.id, c]));
   let cards = [];
   let enabled = {}; // id -> bool
+  let orphanRefs = []; // saved cards whose id is not in this build's catalog — kept so a later build can restore them
   let $addCardSearch = null; // live reference to the add-card search input, re-queried each render
   let addCardSearchTerm = ''; // persisted across re-renders so typing survives DOM rebuilds
   let addCardIssuerFilter = ''; // '' = all issuers; otherwise an exact issuer string from CARD_CATALOG
 
-  function loadStateFromHash() {
+  function cardToRef(card) {
+    const template = CATALOG_BY_ID[card.id];
+    const ref = { id: card.id };
+    if (template && card.choiceCategory && card.choiceCategory !== template.choiceCategory) {
+      ref.choiceCategory = card.choiceCategory;
+    }
+    if (template && template.base && card.base && card.base.rate !== template.base.rate) {
+      ref.baseRate = card.base.rate;
+    }
+    return ref;
+  }
+
+  function refToCard(ref) {
+    const template = CATALOG_BY_ID[ref.id];
+    if (!template) return null;
+    const card = JSON.parse(JSON.stringify(template));
+    const options = card.choiceCategoryOptions || [];
+    if (ref.choiceCategory && options.includes(ref.choiceCategory)) {
+      card.choiceCategory = ref.choiceCategory;
+    }
+    if (typeof ref.baseRate === 'number' && card.base) {
+      card.base.rate = ref.baseRate;
+    }
+    return card;
+  }
+
+  // Accepts both the current ref format and v1 payloads that stored whole card objects.
+  function toRefs(savedCards) {
+    return savedCards
+      .filter((c) => c && typeof c.id === 'string')
+      .map((c) => {
+        if (c.categories || c.base || c.name) return cardToRef(c); // v1 snapshot
+        return c;
+      });
+  }
+
+  function decodePayload(str) {
     try {
-      const hash = window.location.hash.replace(/^#/, '');
-      if (!hash) return null;
-      const json = decodeURIComponent(escape(atob(hash)));
-      return JSON.parse(json);
+      const parsed = JSON.parse(decodeURIComponent(escape(atob(str))));
+      return parsed && Array.isArray(parsed.cards) ? parsed : null;
     } catch (e) {
       return null;
     }
+  }
+
+  function loadStateFromHash() {
+    const hash = window.location.hash.replace(/^#/, '');
+    return hash ? decodePayload(hash) : null;
   }
 
   function loadStateFromStorage() {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      return parsed && Array.isArray(parsed.cards) ? parsed : null;
     } catch (e) {
       return null;
     }
   }
 
+  function currentPayload() {
+    return { v: SCHEMA_VERSION, cards: cards.map(cardToRef).concat(orphanRefs), enabled };
+  }
+
   function saveState() {
-    const payload = { cards, enabled };
+    const json = JSON.stringify(currentPayload());
     try {
-      const json = JSON.stringify(payload);
-      const b64 = btoa(unescape(encodeURIComponent(json)));
-      history.replaceState(null, '', '#' + b64);
+      history.replaceState(null, '', '#' + btoa(unescape(encodeURIComponent(json))));
     } catch (e) {
       /* ignore quota / encoding issues */
     }
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      window.localStorage.setItem(STORAGE_KEY, json);
     } catch (e) {
       /* localStorage unavailable (private browsing, quota, etc.) — hash still works */
     }
@@ -55,28 +107,26 @@
 
   function init() {
     const fromHash = loadStateFromHash();
-    const fromStorage = loadStateFromStorage();
-    const saved = (fromHash && Array.isArray(fromHash.cards)) ? fromHash : fromStorage;
-    if (saved && Array.isArray(saved.cards)) {
-      cards = saved.cards;
-      enabled = saved.enabled || {};
-    } else {
-      cards = [];
-      enabled = {};
-    }
+    const saved = fromHash || loadStateFromStorage();
+    if (!saved) return;
+
+    const refs = toRefs(saved.cards);
+    enabled = saved.enabled || {};
+    cards = [];
+    orphanRefs = [];
+    refs.forEach((ref) => {
+      const card = refToCard(ref);
+      if (card) cards.push(card);
+      else orphanRefs.push(ref);
+    });
     // ensure any pre-existing cards without an enabled flag default to visible
     cards.forEach((c) => {
       if (!(c.id in enabled)) enabled[c.id] = true;
     });
-    // if we loaded from a shared link's hash, mirror it into this device's
-    // own storage right away so a plain reload later keeps the same wallet
-    if (saved === fromHash && fromHash) {
-      try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ cards, enabled }));
-      } catch (e) {
-        /* ignore */
-      }
-    }
+    // Rewrite storage in the current schema right away: migrates v1 payloads and,
+    // when the wallet came from a shared link, mirrors it onto this device so a
+    // plain reload later keeps the same cards.
+    saveState();
   }
 
   function activeCards() {
@@ -86,6 +136,7 @@
   // ---------- DOM refs ----------
   const $query = document.getElementById('query');
   const $clear = document.getElementById('clearQuery');
+  const $send = document.getElementById('submitQuery');
   const $resultsWrap = document.getElementById('resultsWrap');
   const $chips = document.getElementById('chips');
   const $openSettings = document.getElementById('openSettings');
@@ -140,6 +191,22 @@
     return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  const ANSWER_MARK = `
+    <svg class="answer-mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2.2c.5 0 .9.4.9.9v5.3l3.4-3.4a.9.9 0 1 1 1.3 1.3l-3.4 3.4h5.3a.9.9 0 0 1 0 1.8h-5.3l3.4 3.4a.9.9 0 1 1-1.3 1.3l-3.4-3.4v5.3a.9.9 0 0 1-1.8 0v-5.3l-3.4 3.4a.9.9 0 0 1-1.3-1.3l3.4-3.4H4.5a.9.9 0 0 1 0-1.8h5.3L6.4 6.3a.9.9 0 0 1 1.3-1.3l3.4 3.4V3.1c0-.5.4-.9.9-.9z"/>
+    </svg>`;
+
+  function answerLine(top) {
+    const { card, match } = top;
+    const rate = card.unit === '%' ? pct(match.rate) : `${match.rate}x`;
+    const name = `<strong>${escapeHtml(card.name)}</strong>`;
+    const rateHtml = `<span class="answer-rate">${rate}</span>`;
+    const body = match.isBase
+      ? `Nothing in your wallet has a bonus category for that — ${name} is the best of the flat rates at ${rateHtml}.`
+      : `Use your ${name} — ${rateHtml} on ${escapeHtml(match.label.replace(/\s*\(.*\)\s*$/, ''))}.`;
+    return `<div class="answer">${ANSWER_MARK}<p class="answer-text">${body}</p></div>`;
+  }
+
   function renderResults(query) {
     if (!query.trim()) return renderEmpty();
     const list = activeCards();
@@ -183,7 +250,7 @@
         </article>`;
     }).join('');
 
-    $resultsWrap.innerHTML = `<div class="results">${html}</div>`;
+    $resultsWrap.innerHTML = `${answerLine(ranked[0])}<div class="results">${html}</div>`;
   }
 
   function renderChips() {
@@ -200,6 +267,7 @@
   function onQueryChange() {
     const v = $query.value;
     $clear.classList.toggle('visible', v.length > 0);
+    $send.disabled = v.trim().length === 0;
     renderResults(v);
   }
 
@@ -343,9 +411,9 @@
     $cardSettingsList.querySelectorAll('[data-add]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-add');
-        const template = CARD_CATALOG.find((c) => c.id === id);
-        if (template && !cards.some((c) => c.id === id)) {
-          cards.push(JSON.parse(JSON.stringify(template)));
+        const card = refToCard({ id });
+        if (card && !cards.some((c) => c.id === id)) {
+          cards.push(card);
           enabled[id] = true;
           saveState();
           renderCardSettings();
@@ -399,6 +467,14 @@
     onQueryChange();
     $query.focus();
   });
+  // On phones the answer sits below the keyboard — dismiss it and jump to the result.
+  $send.addEventListener('click', () => {
+    $query.blur();
+    $resultsWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  $query.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !$send.disabled) $send.click();
+  });
   $openSettings.addEventListener('click', openSheet);
   $closeSettings.addEventListener('click', closeSheet);
   $doneSettings.addEventListener('click', closeSheet);
@@ -409,6 +485,7 @@
     if (!ok) return;
     cards = [];
     enabled = {};
+    orphanRefs = [];
     saveState();
     renderCardSettings();
   });

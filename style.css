@@ -943,6 +943,15 @@ footer.legal {
   line-height: 1.6;
 }
 footer.legal a { color: var(--color-text-muted); text-decoration: underline; }
+.version {
+  display: block;
+  margin-top: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-faint);
+  opacity: 0.75;
+}
 
 @media (min-width: 640px) {
   main { padding-left: var(--space-8); padding-right: var(--space-8); }

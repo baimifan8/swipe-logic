@@ -5,7 +5,7 @@
 // pinned behind a stale cache. The cache only ever holds copies of files that
 // were served — it never holds wallet data, which lives in localStorage and is
 // untouched by anything here, including the old-cache cleanup on activate.
-const VERSION = 'v11';
+const VERSION = 'v12';
 const CACHE = `swipe-logic-${VERSION}`;
 const ASSETS = [
   './',

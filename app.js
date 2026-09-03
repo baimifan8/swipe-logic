@@ -1,6 +1,10 @@
 (function () {
   'use strict';
 
+  // Captured here because document.currentScript is only valid while this file
+  // is executing synchronously — by the time anything renders, it's null.
+  const THIS_SCRIPT = document.currentScript;
+
   // ---------- State ----------
   // Persistence strategy: each device/browser keeps its own wallet.
   //  1. A shared link with a URL hash (base64 JSON) always wins on first load —
@@ -127,6 +131,23 @@
     // when the wallet came from a shared link, mirrors it onto this device so a
     // plain reload later keeps the same cards.
     saveState();
+  }
+
+  // The build stamp in the footer. It reads this script's own ?v=, which
+  // `npm run release` bumps, so what's on screen is necessarily the build that's
+  // actually loaded rather than a number someone remembered to update.
+  function renderVersion() {
+    const $version = document.getElementById('appVersion');
+    if (!$version) return;
+    let v = '';
+    try {
+      v = new URL(THIS_SCRIPT.src).searchParams.get('v') || '';
+    } catch (e) {
+      v = ''; // opened straight off the filesystem, or no query string
+    }
+    if (!v) return;
+    $version.textContent = `v${v}`;
+    $version.hidden = false;
   }
 
   function activeCards() {
@@ -691,6 +712,7 @@
 
   // ---------- Boot ----------
   init();
+  renderVersion();
   renderChips();
   renderEmpty();
 

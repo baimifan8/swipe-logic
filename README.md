@@ -59,17 +59,21 @@ The badge in the header shows how many people have the app open right now, and
 its tooltip adds today's count and the all-time session total.
 
 - The browser makes up a random id per tab session and sends it to
-  `POST /api/session` every 30 seconds; a session counts as "here now" for 90
-  seconds after its last heartbeat.
+  `POST /api/session` every 15 seconds; a session counts as "here now" for 90
+  seconds after its last heartbeat. The heartbeat doubles as how fast the badge
+  notices other people, which is why it isn't slower.
 - The server stores nothing else: no IP addresses, no user agents, no queries,
   no wallet contents.
 - Counts live in `data/stats.json` (override with `SWIPE_DATA_DIR`). That
   directory is gitignored and separate from the app files. Deployed, they live in
   the Worker's Durable Object instead — same numbers, same shape.
 - `GET /api/stats` returns `{ active, today, allTime }` if you want to graph it.
-- "Active" is held in memory. Restarting the server, or the Durable Object being
-  evicted when idle, resets it to zero and it refills within one heartbeat;
-  today's and the all-time counts are stored and survive.
+- Who is currently here is stored, not just held in memory. A Durable Object is
+  evicted once it goes idle, and with sparse traffic the gap between two
+  heartbeats is often enough to evict it — an in-memory map meant every
+  heartbeat woke a blank object and answered "1 person here" forever. Restarting
+  `server.js` still clears the live count (it refills within one heartbeat);
+  today's and all-time counts survive both.
 
 ## Updating without losing anyone's cards
 
@@ -108,9 +112,13 @@ npm run release   # v11 -> v12 in both files
 npm run check     # verify only, change nothing
 ```
 
-It refuses to bump if anything is inconsistent, because a fresh version number
-can't repair a file that nothing lists. The same check runs automatically inside
-`npm run build`, so a bad state fails the deploy rather than shipping:
+Build numbers are plain integers; the footer shows them as `v1.3` rather than
+`v13`, so they read as a version rather than a serial number.
+
+A bump repairs version drift, since rewriting both files to one number is
+exactly that repair. It refuses when a file is missing from a listing, which no
+version number can fix. The same check runs automatically inside `npm run
+build`, so a bad state fails the deploy rather than shipping:
 
 - A script `index.html` loads that's missing from `sw.js` — works online, breaks
   offline.

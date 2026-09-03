@@ -146,7 +146,10 @@
       v = ''; // opened straight off the filesystem, or no query string
     }
     if (!v) return;
-    $version.textContent = `v${v}`;
+    // Build numbers increment as plain integers; shown as 1.3 rather than 13
+    // because that reads as a version rather than a serial number. 20 -> 2.0.
+    const n = Number(v);
+    $version.textContent = Number.isFinite(n) ? `v${Math.floor(n / 10)}.${n % 10}` : `v${v}`;
     $version.hidden = false;
   }
 

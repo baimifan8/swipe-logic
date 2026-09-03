@@ -38,6 +38,12 @@ export class SessionCounter {
         this.day = typeof saved.day === 'string' ? saved.day : today();
         this.todayIds = new Set(Array.isArray(saved.todayIds) ? saved.todayIds : []);
         this.allTime = Number(saved.allTime) || 0;
+        // Who is currently here has to be stored, not just held in memory: a
+        // Durable Object is evicted once it goes idle, and with traffic this
+        // sparse the gap between two heartbeats is often enough to evict it. An
+        // in-memory map meant every heartbeat woke a blank object and answered
+        // "1 person here" — the count looked frozen no matter who else was on.
+        if (Array.isArray(saved.seen)) this.lastSeen = new Map(saved.seen);
       }
       this.rollDay();
     });
@@ -58,6 +64,9 @@ export class SessionCounter {
       day: this.day,
       todayIds: [...this.todayIds],
       allTime: this.allTime,
+      // Pruned in counts(), so this only ever holds sessions inside the active
+      // window — it can't grow without bound.
+      seen: [...this.lastSeen],
     });
   }
 
@@ -88,15 +97,17 @@ export class SessionCounter {
       }
       if (!ID_PATTERN.test(id)) return json({ error: 'invalid id' }, 400);
 
-      let dirty = this.rollDay();
+      this.rollDay();
       this.lastSeen.set(id, Date.now());
       if (!this.todayIds.has(id)) {
         if (this.todayIds.size < MAX_TRACKED_IDS) this.todayIds.add(id);
         this.allTime += 1;
-        dirty = true;
       }
-      if (dirty) await this.save();
-      return json(this.counts());
+      // counts() prunes expired sessions, so it runs before the write and the
+      // stored map stays the same size as the answer we just gave.
+      const stats = this.counts();
+      await this.save();
+      return json(stats);
     }
 
     return json({ error: 'not found' }, 404);

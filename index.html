@@ -60,6 +60,15 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
           </button>
         </div>
+        <!-- Optional: with an amount, a credit can be weighed against a multiplier
+             in dollars, which is the only way to rank the two against each other. -->
+        <div class="amount-row">
+          <label class="amount-field" for="amount">
+            <span class="amount-prefix" aria-hidden="true">$</span>
+            <input id="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="Amount" aria-label="Purchase amount, optional" />
+          </label>
+          <span class="amount-hint" id="amountHint">Optional — with an amount I can rank credits against points in dollars.</span>
+        </div>
         <div class="chips" id="chips" role="list" aria-label="Quick examples"></div>
         <p class="search-hint">Answers update as you type — a merchant, brand, or category all work. Cards with different travel rules (direct booking vs. portal vs. partner) can rank differently for the same trip.</p>
       </div>
@@ -98,14 +107,14 @@
     </div>
   </div>
 
-  <script src="./cards.js?v=10"></script>
+  <script src="./cards.js?v=11"></script>
   <!-- Imported cards (tools/import-cards.mjs) and hand-kept statement credits.
        Both merge into CARD_CATALOG, so they must load after cards.js. -->
-  <script src="./catalog-generated.js?v=10"></script>
-  <script src="./credits.js?v=10"></script>
-  <script src="./credit-usage.js?v=10"></script>
-  <script src="./matcher.js?v=10"></script>
-  <script src="./app.js?v=10"></script>
-  <script src="./presence.js?v=10"></script>
+  <script src="./catalog-generated.js?v=11"></script>
+  <script src="./credits.js?v=11"></script>
+  <script src="./credit-usage.js?v=11"></script>
+  <script src="./matcher.js?v=11"></script>
+  <script src="./app.js?v=11"></script>
+  <script src="./presence.js?v=11"></script>
 </body>
 </html>

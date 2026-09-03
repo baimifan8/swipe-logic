@@ -138,6 +138,7 @@
   const $clear = document.getElementById('clearQuery');
   const $send = document.getElementById('submitQuery');
   const $resultsWrap = document.getElementById('resultsWrap');
+  const $amount = document.getElementById('amount');
   const $chips = document.getElementById('chips');
   const $openSettings = document.getElementById('openSettings');
   const $closeSettings = document.getElementById('closeSettings');
@@ -197,6 +198,22 @@
     </svg>`;
 
   const CADENCE_LABEL = { month: 'a month', quarter: 'a quarter', half: 'twice a year', year: 'a year' };
+
+  function money(n) {
+    return `$${n.toFixed(2)}`;
+  }
+
+  // The optional purchase amount. Anything unparseable reads as "not given",
+  // which puts ranking back on rates alone rather than guessing a number.
+  function currentAmount() {
+    const raw = ($amount.value || '').trim();
+    // A negative reads as "not a purchase amount" rather than being stripped down
+    // to its digits — silently costing "-5" into a $5 calculation would be worse
+    // than ignoring it.
+    if (!raw || raw.includes('-')) return null;
+    const n = parseFloat(raw.replace(/[^0-9.]/g, ''));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
 
   // "$10 a month" when the per-period amount is known, otherwise the annual total.
   function creditAmount(credit) {
@@ -261,7 +278,11 @@
       const left = CreditUsage.remaining(top.card.id, c);
       const amount = left !== null && left < CreditUsage.allowance(c) ? `$${left} left of its` : 'its';
       creditHtml = `<p class="answer-credit">Stacks with ${amount} <strong>${escapeHtml(creditAmount(c))} ${escapeHtml(c.label)}</strong>${c.enroll ? ' (enroll first)' : ''}.</p>`;
-    } else {
+    } else if (!top.value) {
+      // Without an amount this is a genuine "you might be leaving money on the
+      // table" nudge. With one, the ranking has already weighed that credit in
+      // dollars and put this card on top anyway, so repeating the nudge would
+      // contradict the math directly below it.
       const other = ranked.slice(1).find((r) => r.liveCredits.length);
       if (other) {
         const c = other.liveCredits[0];
@@ -270,7 +291,23 @@
         creditHtml = `<p class="answer-credit">Your <strong>${escapeHtml(other.card.short || other.card.name)}</strong> still has ${escapeHtml(amount)} of its ${escapeHtml(c.label)} — on a small purchase that beats the rate difference.</p>`;
       }
     }
-    return `<div class="answer">${ANSWER_MARK}<div><p class="answer-text">${body}</p>${creditHtml}</div></div>`;
+    // With an amount, say what the choice is actually worth — this is the line
+    // that justifies a credit outranking a better multiplier.
+    let valueHtml = '';
+    if (top.value) {
+      const amount = currentAmount();
+      const parts = [];
+      if (top.value.credits > 0) parts.push(`${money(top.value.credits)} of credit`);
+      parts.push(`${money(top.value.rewards)} in ${card.unit === '%' ? 'cash back' : 'points'}`);
+      const runnerUp = ranked[1];
+      const edge = runnerUp ? top.value.total - runnerUp.value.total : 0;
+      const versus = runnerUp && edge > 0.005
+        ? ` — ${money(edge)} more than your ${escapeHtml(runnerUp.card.short || runnerUp.card.name)}`
+        : '';
+      valueHtml = `<p class="answer-value">On ${money(amount)}: <strong>${money(top.value.total)} back</strong> (${parts.join(' + ')})${versus}.</p>`;
+    }
+
+    return `<div class="answer">${ANSWER_MARK}<div><p class="answer-text">${body}</p>${creditHtml}${valueHtml}</div></div>`;
   }
 
   function renderResults(query) {
@@ -278,7 +315,11 @@
     const list = activeCards();
     if (!list.length) return renderNoCards();
 
-    const ranked = rankCards(query, list, (card, credit) => !CreditUsage.isSpent(card.id, credit));
+    const ranked = rankCards(query, list, {
+      isCreditLive: (card, credit) => !CreditUsage.isSpent(card.id, credit),
+      creditRemaining: (card, credit) => CreditUsage.remaining(card.id, credit),
+      amount: currentAmount(),
+    });
     if (!ranked.length) return renderEmpty();
 
     const html = ranked.map((r, i) => {
@@ -304,6 +345,7 @@
             <div class="result-rate">
               <div class="rate-number">${rateDisplay}</div>
               <div class="rate-unit">${unitLabel(card, match)}</div>
+              ${r.value ? `<div class="rate-value" title="${r.value.credits > 0 ? `${money(r.value.credits)} credit + ${money(r.value.rewards)} earned` : 'Rewards on this purchase'}">${money(r.value.total)} back</div>` : ''}
             </div>
           </div>
           ${fallbackTag}
@@ -604,6 +646,7 @@
 
   // ---------- Events ----------
   $query.addEventListener('input', onQueryChange);
+  $amount.addEventListener('input', onQueryChange);
   // Credit rows are rebuilt on every keystroke, so the handler lives on the
   // container rather than on each button.
   $resultsWrap.addEventListener('click', (e) => {

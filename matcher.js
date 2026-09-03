@@ -149,30 +149,63 @@ function matchingCredits(card, query) {
     .map((m) => m.credit);
 }
 
-// `isCreditLive(card, credit)` lets the caller exclude credits already spent this
-// period (see credit-usage.js). Defaults to treating every credit as available,
-// so the matcher stays usable on its own.
-function rankCards(query, cards, isCreditLive) {
+// What this purchase is actually worth on one card, in dollars. Only computable
+// with an amount: a $10 credit beats 4x points on an $18 order and loses badly on
+// a $500 one, and nothing but the amount separates those two cases.
+//
+// Rewards accrue on the full charge — a statement credit posts separately and
+// doesn't reduce the earning charge — so the two add rather than compete. Credits
+// are capped at the purchase amount (you can't extract $50 of credit from a $18
+// order) and at what's left of each one this period. A credit whose size varies
+// contributes nothing here rather than an invented number; it still gets listed.
+function purchaseValue(amount, effPct, liveCredits, remainingOf) {
+  const rewards = (amount * effPct) / 100;
+  let credits = 0;
+  for (const credit of liveCredits) {
+    const left = remainingOf(credit);
+    if (typeof left !== 'number') continue;
+    credits += Math.min(left, amount - credits);
+    if (credits >= amount) break;
+  }
+  credits = Math.max(0, Math.min(credits, amount));
+  return { rewards, credits, total: rewards + credits };
+}
+
+// Options:
+//   isCreditLive(card, credit)     exclude credits already spent this period
+//   creditRemaining(card, credit)  dollars left of one, or null when it varies
+//   amount                         purchase amount; switches ranking to dollars
+// All optional — the matcher stays usable on its own.
+function rankCards(query, cards, options) {
   const q = normalize(query);
   if (!q) return [];
-  const live = typeof isCreditLive === 'function' ? isCreditLive : () => true;
+  const opts = options || {};
+  const live = typeof opts.isCreditLive === 'function' ? opts.isCreditLive : () => true;
+  const remaining = typeof opts.creditRemaining === 'function' ? opts.creditRemaining : () => null;
+  const amount = Number(opts.amount) > 0 ? Number(opts.amount) : null;
 
   const results = cards.map((card) => {
     const match = bestCategoryForCard(card, q);
     const effPct = effectivePercent(match.rate, match.unit, card.pointValue);
     const credits = matchingCredits(card, q);
+    const liveCredits = credits.filter((c) => live(card, c));
     return {
       card,
       match,
       effectivePercent: effPct,
       confidence: match.isBase ? 0 : match.score,
       credits,
-      liveCredits: credits.filter((c) => live(card, c)),
+      liveCredits,
+      value: amount ? purchaseValue(amount, effPct, liveCredits, (c) => remaining(card, c)) : null,
     };
   });
 
-  // Sort: prefer highest effective %, but break ties by confidence (specific category match wins over base)
   results.sort((a, b) => {
+    // With an amount, total dollars back is the whole question — a credit can
+    // legitimately beat a better multiplier, which is what the amount is for.
+    if (amount) {
+      if (Math.abs(b.value.total - a.value.total) > 0.005) return b.value.total - a.value.total;
+    }
     if (Math.abs(b.effectivePercent - a.effectivePercent) > 0.01) {
       return b.effectivePercent - a.effectivePercent;
     }

@@ -166,10 +166,30 @@ $10/month Uber Cash.
 and give `annual` instead; `enroll: true` renders the badge that says the credit
 does nothing until you enroll in the issuer app.
 
-Credits deliberately do **not** reorder results by rate — a credit can't be
-weighed against a multiplier without knowing the purchase amount — but a credit
-that still has room breaks a tie between two cards at the same rate, and one
-sitting on a losing card is surfaced under the answer.
+Without a purchase amount, credits don't reorder results by rate — there's no
+honest way to weigh "$10 credit" against "4x points" in the abstract. A credit
+with room left breaks a tie between two cards at the same rate, and one sitting
+on a losing card is surfaced under the answer as a nudge.
+
+### The amount field
+
+Type an amount next to the search box and the ranking switches to dollars, which
+is the only basis on which a credit and a multiplier can actually be compared.
+
+```
+"dunkin", no amount → Venture X (2x) wins on rate; Gold's $7 credit is a footnote
+"dunkin", $8        → Gold wins: $7.08 back ($7.00 credit + $0.08) vs $0.16
+"dunkin", $1000     → Venture X wins again: $20.00 vs $17.00
+```
+
+The math: rewards accrue on the full charge — a statement credit posts
+separately and doesn't reduce the earning charge — so the two add rather than
+compete. Credits are capped at the purchase amount and at what's left of each one
+this period, and a credit whose size varies contributes nothing rather than an
+invented number. Marking a credit used drops it straight out of the dollar math.
+
+Leaving the field empty (or typing something that isn't a positive number) puts
+ranking back on rates alone rather than guessing.
 
 ### Tracking what you've spent
 

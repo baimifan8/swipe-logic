@@ -31,10 +31,20 @@ const args = process.argv.slice(2);
 const CHECK_ONLY = args.includes('--check');
 const explicit = args.find((a) => /^v?\d+$/.test(a));
 
-let problems = 0;
+// Two classes of problem, which want different treatment on a bump:
+//   drift    — index.html and sw.js name different versions. A bump repairs this
+//              by definition, since it rewrites both to the same new number.
+//   listing  — a file nothing lists. No version number can fix that, so a bump
+//              must refuse rather than paper over it with a fresh number.
+let drift = 0;
+let listing = 0;
+const failDrift = (msg) => {
+  console.error(`  ✗ ${msg}`);
+  drift += 1;
+};
 const fail = (msg) => {
   console.error(`  ✗ ${msg}`);
-  problems += 1;
+  listing += 1;
 };
 
 // ---------- read current state ----------
@@ -71,7 +81,7 @@ console.log(`[bump-version] current version: ${currentVersion}`);
 
 for (const { file, version } of scriptTags) {
   if (version !== String(currentNumber)) {
-    fail(`index.html loads ${file} with ?v=${version ?? '(none)'}, but sw.js is ${currentVersion}`);
+    failDrift(`index.html loads ${file} with ?v=${version ?? '(none)'}, but sw.js is ${currentVersion}`);
   }
 }
 for (const { file } of pageFiles) {
@@ -80,32 +90,42 @@ for (const { file } of pageFiles) {
   if (!buildFiles.has(file)) fail(`${file} is loaded by index.html but missing from FILES in tools/build-assets.mjs (would 404 when deployed)`);
 }
 
-if (problems) {
-  console.error(`\n[bump-version] ${problems} problem${problems === 1 ? '' : 's'} found.`);
-  if (CHECK_ONLY) process.exit(1);
-  console.error('[bump-version] fix the listing problems above before releasing.\n');
-  // A version bump can't repair a missing file listing, so stop rather than
-  // paper over it with a fresh version number.
-  process.exit(1);
-}
-
-console.log(`  ✓ ${pageFiles.length} files listed consistently in index.html, sw.js and build-assets.mjs`);
-
+const problems = drift + listing;
 if (CHECK_ONLY) {
+  if (problems) {
+    console.error(`\n[bump-version] ${problems} problem${problems === 1 ? '' : 's'} found.`);
+    process.exit(1);
+  }
+  console.log(`  ✓ ${pageFiles.length} files listed consistently in index.html, sw.js and build-assets.mjs`);
   console.log('[bump-version] check only — nothing changed.');
   process.exit(0);
 }
 
+if (listing) {
+  console.error(`\n[bump-version] ${listing} file${listing === 1 ? '' : 's'} not listed everywhere.`);
+  console.error('[bump-version] a new version number cannot fix that — list the file, then release.\n');
+  process.exit(1);
+}
+if (drift) {
+  console.log(`  → repairing ${drift} version mismatch${drift === 1 ? '' : 'es'} as part of this bump`);
+} else {
+  console.log(`  ✓ ${pageFiles.length} files listed consistently in index.html, sw.js and build-assets.mjs`);
+}
+
 // ---------- bump ----------
 const nextNumber = explicit ? Number(explicit.replace(/^v/, '')) : currentNumber + 1;
-if (nextNumber === currentNumber) {
+// "Already at this version" is only nothing-to-do when the files agree. With
+// drift outstanding, rewriting them to the same number is the repair.
+if (nextNumber === currentNumber && !drift) {
   console.log(`[bump-version] already at v${nextNumber} — nothing to do.`);
   process.exit(0);
 }
 const nextVersion = `v${nextNumber}`;
 
 fs.writeFileSync(SW, swSrc.replace(`const VERSION = '${currentVersion}';`, `const VERSION = '${nextVersion}';`));
-fs.writeFileSync(INDEX, indexSrc.replaceAll(`?v=${currentNumber}"`, `?v=${nextNumber}"`));
+// Rewrite every ?v= regardless of what it currently says, so a bump also
+// repairs tags that had drifted to some other number.
+fs.writeFileSync(INDEX, indexSrc.replace(/\?v=\d+"/g, `?v=${nextNumber}"`));
 
 console.log(`[bump-version] ${currentVersion} -> ${nextVersion} in sw.js and index.html`);
 console.log('[bump-version] commit these, then deploy.');

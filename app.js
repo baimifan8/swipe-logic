@@ -389,7 +389,9 @@
       btn.addEventListener('click', () => {
         $query.value = btn.textContent;
         onQueryChange();
-        $query.focus();
+        // Deliberately no focus(): tapping an example is picking an answer, not
+        // starting to type, and focusing the input throws the phone keyboard up
+        // over the results the tap was meant to reveal.
       });
     });
   }

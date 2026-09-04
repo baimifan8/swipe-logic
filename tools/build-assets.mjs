@@ -31,6 +31,7 @@ try {
 
 const FILES = [
   'index.html',
+  'wiki.html',
   'base.css',
   'style.css',
   'cards.js',

@@ -168,7 +168,13 @@ async function handleApi(req, res, pathname) {
 }
 
 function serveStatic(req, res, pathname) {
-  const rel = decodeURIComponent(pathname === '/' ? '/index.html' : pathname);
+  let rel = decodeURIComponent(pathname === '/' ? '/index.html' : pathname);
+  // Clean URLs for extension-less paths (/wiki -> wiki.html), matching how
+  // Cloudflare's static-asset serving resolves the same URL in production —
+  // local dev and the deployed site should agree on what a link points to.
+  if (!path.extname(rel) && fs.existsSync(path.join(ROOT, rel + '.html'))) {
+    rel += '.html';
+  }
   const filePath = path.join(ROOT, path.normalize(rel));
   if (!filePath.startsWith(ROOT + path.sep) || filePath.startsWith(DATA_DIR)) {
     res.writeHead(403).end('Forbidden');

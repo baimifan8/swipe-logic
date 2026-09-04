@@ -52,3 +52,15 @@ Rules for that entry:
 
 If in doubt whether something's user-visible enough to log, err toward
 skipping it — a changelog that logs everything stops being read as a changelog.
+
+**A gap between two logged version numbers is fine — an unaccounted one isn't.**
+Not every version needs its own entry: `v1.4` next to `v1.6` is normal if `v1.5`
+had nothing worth a separate line. But check what actually shipped in `v1.5`
+before leaving it out — `git log --oneline -- sw.js` shows the real version
+history. If it *did* ship something user-visible, either give it its own entry
+or fold it honestly into the entry for the version next to it (say what
+happened, not just what's true now) — don't just relabel an existing entry's
+version number and leave the skipped version unaddressed. That's what created
+the gap this file exists to prevent: a v1.5 entry ("added a wiki link") went
+unwritten, then the v1.6 entry that followed got relabeled without saying what
+v1.5 had actually done.

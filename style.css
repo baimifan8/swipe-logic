@@ -943,9 +943,31 @@ footer.legal {
   line-height: 1.6;
 }
 footer.legal a { color: var(--color-text-muted); text-decoration: underline; }
-.version {
-  display: block;
+.footer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   margin-top: var(--space-3);
+}
+.wiki-link {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-faint);
+  opacity: 0.75;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.wiki-link:hover { opacity: 1; color: var(--color-text-muted); }
+/* A dot between "Wiki" and the version — only when the version is actually
+   showing, so nothing dangles if it's ever hidden (no JS, unparsed ?v=). */
+.wiki-link:has(+ .version:not([hidden]))::after {
+  content: '·';
+  margin-left: var(--space-2);
+  color: var(--color-text-faint);
+  opacity: 0.6;
+}
+.version {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   letter-spacing: 0.04em;

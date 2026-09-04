@@ -78,9 +78,12 @@
 
     <footer class="legal">
       Reward rates as published by each issuer, checked July 2026 — issuers can change categories or terms anytime. Verify in the issuer app before a big purchase. Not affiliated with any card issuer.
-      <!-- Filled in by app.js from its own ?v= so it can't disagree with the
-           build that's actually loaded. Hidden if there's nothing to show. -->
-      <span class="version" id="appVersion" hidden></span>
+      <div class="footer-meta">
+        <a href="https://claude.ai/code/artifact/ac0edfe1-2587-4c4a-a0d1-5955ade67228" target="_blank" rel="noopener" class="wiki-link">Wiki</a>
+        <!-- Filled in by app.js from its own ?v= so it can't disagree with the
+             build that's actually loaded. Hidden if there's nothing to show. -->
+        <span class="version" id="appVersion" hidden></span>
+      </div>
     </footer>
   </div>
 
@@ -110,14 +113,14 @@
     </div>
   </div>
 
-  <script src="./cards.js?v=14"></script>
+  <script src="./cards.js?v=15"></script>
   <!-- Imported cards (tools/import-cards.mjs) and hand-kept statement credits.
        Both merge into CARD_CATALOG, so they must load after cards.js. -->
-  <script src="./catalog-generated.js?v=14"></script>
-  <script src="./credits.js?v=14"></script>
-  <script src="./credit-usage.js?v=14"></script>
-  <script src="./matcher.js?v=14"></script>
-  <script src="./app.js?v=14"></script>
-  <script src="./presence.js?v=14"></script>
+  <script src="./catalog-generated.js?v=15"></script>
+  <script src="./credits.js?v=15"></script>
+  <script src="./credit-usage.js?v=15"></script>
+  <script src="./matcher.js?v=15"></script>
+  <script src="./app.js?v=15"></script>
+  <script src="./presence.js?v=15"></script>
 </body>
 </html>

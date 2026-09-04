@@ -36,13 +36,14 @@
     .wiki-topbar a.wordmark svg { width: 20px; height: 14px; color: var(--color-primary); flex-shrink: 0; }
     .wiki-topbar .kicker { color: var(--color-text-faint); font-size: var(--text-sm); }
     .wiki-topbar-spacer { flex: 1; }
-    .wiki-chip {
+    a.wiki-chip {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 3px 10px; border-radius: var(--radius-full);
       border: 1px solid var(--color-border); background: var(--color-surface);
       font-size: var(--text-xs); color: var(--color-text-muted); white-space: nowrap;
-      font-family: var(--font-mono);
+      font-family: var(--font-mono); text-decoration: none;
     }
+    a.wiki-chip:hover { color: var(--color-primary); border-color: color-mix(in oklab, var(--color-primary) 35%, var(--color-border)); }
 
     .wiki-shell { max-width: 1040px; margin: 0 auto; padding: 0 var(--space-5) var(--space-16); }
     .wiki-layout { display: block; }
@@ -149,7 +150,7 @@
       <span class="kicker">/ wiki</span>
     </a>
     <div class="wiki-topbar-spacer"></div>
-    <span class="wiki-chip">← back to the app</span>
+    <a class="wiki-chip" href="./">← back to the app</a>
   </div>
 
   <div class="wiki-shell">

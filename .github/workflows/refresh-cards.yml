@@ -12,17 +12,20 @@ on:
     - cron: '17 9 1 * *' # 09:17 UTC on the 1st of each month
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
+# Default to nothing, then grant only what the job needs. Without this, a
+# workflow in a public repo runs with whatever the repo default is.
+permissions: {}
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # commit the refreshed catalog to a branch
+      pull-requests: write   # open the PR with that branch
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
 
@@ -54,7 +57,7 @@ jobs:
 
       - name: Open a pull request
         if: steps.creds.outputs.have == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
           branch: chore/refresh-card-catalog
           title: 'Refresh imported card catalog'

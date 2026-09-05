@@ -247,3 +247,19 @@ This file is maintained by hand and the importer never touches it: no free feed
 publishes credits, and they change on issuer whim. The seeded numbers were
 checked September 3, 2026. Re-check them when a card's annual fee changes, which
 is usually when the credits get reshuffled too.
+
+## License and contributions
+
+Licensed under the [GNU AGPL-3.0](LICENSE). Fork it, learn from it, build your
+own version — the one condition is that if you run a modified copy as a public
+service, you publish your changes too.
+
+Pull requests aren't accepted; see [CONTRIBUTING.md](CONTRIBUTING.md) for why
+and what to do instead. Security reports go through a
+[private advisory](https://github.com/baimifan8/swipe-logic/security/advisories/new),
+not a public issue — see [SECURITY.md](SECURITY.md).
+
+**The card data in this repo is not verified.** Rates, categories and credit
+amounts were transcribed by hand from published issuer terms on the dates noted
+at the top of `cards.js` and `credits.js`, never checked against a live source,
+and they go stale fast. Re-verify anything you intend to rely on.
